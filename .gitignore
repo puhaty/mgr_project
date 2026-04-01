@@ -1,0 +1,5 @@
+build/
+.vscode/
+dependencies.lock
+sdkconfig
+components/lvgl__lvgl/
