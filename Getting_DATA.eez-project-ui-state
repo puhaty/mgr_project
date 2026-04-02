@@ -1,7 +1,6 @@
 {
   "navigation": {
     "selectedUserPageObject": "[Getting_DATA.eez-project]:/userPages/0",
-    "selectedActionObject": "[Getting_DATA.eez-project]:/actions/-1",
     "subnavigationSelectedItems": {
       "variables-tab/sub-navigation/selected-item": "Global"
     }
@@ -125,7 +124,6 @@
                   "type": "tabset",
                   "id": "#5d394dea-4702-4db9-8810-0e370b2f83b7",
                   "weight": 0.6955281721836106,
-                  "selected": 2,
                   "enableClose": false,
                   "children": [
                     {
@@ -217,7 +215,7 @@
                 {
                   "type": "tabset",
                   "id": "#1581673e-7724-4a1d-9f78-23c81cb55387",
-                  "weight": 1.7904841402337228,
+                  "weight": 2.2437395659432386,
                   "children": [
                     {
                       "type": "tab",
@@ -232,7 +230,7 @@
                 {
                   "type": "tabset",
                   "id": "#d3b0b313-e251-4d7f-9e12-c2dbdaeeff88",
-                  "weight": 1.2095158597662772,
+                  "weight": 0.7562604340567612,
                   "children": [
                     {
                       "type": "tab",
@@ -1071,31 +1069,13 @@
                 "7": {},
                 "8": {},
                 "9": {},
-                "10": {}
-              }
-            },
-            "1": {
-              "0": {
-                "0": {
-                  "$selected": true
+                "10": {
+                  "0": {},
+                  "1": {}
                 },
-                "1": {},
-                "2": {
-                  "0": {}
-                },
-                "3": {
-                  "0": {}
-                },
-                "4": {},
-                "5": {},
-                "6": {}
+                "$selected": true
               }
             }
-          },
-          "1": {
-            "0": {},
-            "1": {},
-            "2": {}
           }
         }
       },

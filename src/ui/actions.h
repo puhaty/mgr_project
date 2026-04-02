@@ -15,6 +15,11 @@ extern void action_click_filename(lv_event_t * e);
 extern void action_pressed_fuel_consumption(lv_event_t * e);
 extern void action_released_fuel_consumption(lv_event_t * e);
 extern void action_switch_changed(lv_event_t * e);
+extern void action_click_rtc(lv_event_t * e);
+extern void action_click_ssid(lv_event_t * e);
+extern void action_click_password(lv_event_t * e);
+extern void action_click_disconnect(lv_event_t * e);
+extern void action_click_connect(lv_event_t * e);
 
 #ifdef __cplusplus
 }
