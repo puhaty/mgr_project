@@ -1,6 +1,8 @@
 #ifndef _SD_CARD_
 #define _SD_CARD_
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/unistd.h>
 #include <sys/stat.h>
@@ -23,5 +25,18 @@
 
 // Function prototypes for initializing and testing SD card functions
 esp_err_t waveshare_sd_card_init();
+
+// Recording control mode: false = ignition auto mode, true = user/manual mode
+void sd_card_set_control_mode(bool user_control_mode);
+bool sd_card_is_user_control_mode(void);
+
+// Ignition edge handlers used in ignition auto mode
+void sd_card_on_ignition_on(void);
+void sd_card_on_ignition_off(void);
+
+esp_err_t sd_card_start_recording(const char *filename);
+void sd_card_stop_recording(void);
+bool sd_card_is_recording(void);
+uint32_t sd_card_get_saved_records(void);
 
 #endif

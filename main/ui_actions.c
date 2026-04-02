@@ -4,82 +4,58 @@
 #include "lvgl.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/semphr.h"
 #include "can.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/stat.h>
 #include "sd_card.h"
+#include "wifi_manager.h"
+#include "rtc_manager.h"
 
 static const char *TAG = "ui_actions";
 
 static void focus_filename_input(void);
+static void focus_wifi_input(lv_obj_t *textarea);
+static void hide_wifi_keyboard(void);
 static void set_backlight_state(bool on);
 static void update_backlight_mode_label(void);
 static void register_backlight_short_click_handlers(void);
 static void action_screen_short_clicked(lv_event_t * e);
+static void update_wifi_status_label(void);
+static void update_time_label(void);
+static void update_time_sync_label(void);
+static void update_sd_mode_controls(void);
 esp_err_t wavesahre_rgb_lcd_bl_on(void);
 esp_err_t wavesahre_rgb_lcd_bl_off(void);
 
-// Adding a global (static) pointer to the keyboard, 
-// because the generator did not assign it to a generated variable.
-static lv_obj_t * kb_instance = NULL;
 static TickType_t press_start_time = 0;
 
-// Variables for handling SD card writing
-static volatile bool is_recording = false;
-static char current_filename[128] = "";
-static uint32_t saved_records = 0;
-static TaskHandle_t sd_logger_handle = NULL;
 static bool s_bl_user_control = false;
 static int8_t s_backlight_state = -1; // -1 unknown, 0 off, 1 on
 static uint32_t s_last_short_click_ms = 0;
 static bool s_short_click_handlers_registered = false;
-
-void sd_logger_task(void *pvParameters) {
-    while (1) {
-        if (is_recording) {
-            can_data_t *data = can_app_get_data();
-            
-            // Only if ignition is on
-            if (data->ignition) {
-                char filepath[140];
-                snprintf(filepath, sizeof(filepath), "%s/%s.csv", MOUNT_POINT, current_filename);
-                // "a" - append to file, safe after power failure
-                FILE *f = fopen(filepath, "a");
-                if (f != NULL) {
-                    if (saved_records == 0) {
-                        fprintf(f, "timestamp,ignition,speed,rpm,throttle,brake,fuel_level,fuel_cons,distance,range,oil_temp,esp\n");
-                    }
-                    fprintf(f, "%lu,%u,%u,%lu,%u,%u,%u,%.2f,%lu,%u,%d,%u\n",
-                            data->timestamp, data->ignition, data->speed, data->rpm,
-                            data->throttle_pedal, data->brake_pedal, data->fuel_level,
-                            data->fuel_consumption, data->t_distance, data->range,
-                            data->oil_temp, data->esp_stat);
-                    fclose(f);
-                    saved_records++;
-                } else {
-                    ESP_LOGE(TAG, "Failed to open file %s for writing", filepath);
-                }
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(100)); // every 100ms
-    }
-}
+static bool s_save_controls_initialized = false;
 
 static void update_status_task(lv_timer_t * timer) {
-    if (is_recording) {
+    if (sd_card_is_recording()) {
         char buf[32];
-        snprintf(buf, sizeof(buf), "Saved: %lu", saved_records);
+        snprintf(buf, sizeof(buf), "Saved: %lu", sd_card_get_saved_records());
         lv_label_set_text(objects.label_status, buf);
     }
+
+    update_wifi_status_label();
+    update_time_label();
+    update_time_sync_label();
 }
 
 void action_click_save(lv_event_t * e) {
+    if (!s_bl_user_control) {
+        lv_label_set_text(objects.label_status, "Status: ignition mode");
+        return;
+    }
+
     ESP_LOGI(TAG, "action_click_save triggered (Stop recording)");
-    is_recording = false;
+    sd_card_stop_recording();
     
     // Disable Save button
     lv_obj_add_state(objects.button_save, LV_STATE_DISABLED);
@@ -87,12 +63,17 @@ void action_click_save(lv_event_t * e) {
     lv_obj_clear_state(objects.button_new__file, LV_STATE_DISABLED);
     
     char buf[64];
-    snprintf(buf, sizeof(buf), "Status: saved %lu records", saved_records);
+    snprintf(buf, sizeof(buf), "Status: saved %lu records", sd_card_get_saved_records());
     lv_label_set_text(objects.label_status, buf);
     lv_label_set_text(objects.label_file, "File: -");
 }
 
 void action_click_new_file(lv_event_t * e) {
+    if (!s_bl_user_control) {
+        lv_label_set_text(objects.label_status, "Status: ignition mode");
+        return;
+    }
+
     ESP_LOGI(TAG, "action_click_new_file triggered");
     if (objects.panel_new_file != NULL) {
         lv_obj_clear_flag(objects.panel_new_file, LV_OBJ_FLAG_HIDDEN);
@@ -102,15 +83,19 @@ void action_click_new_file(lv_event_t * e) {
 }
 
 void action_click_start(lv_event_t * e) {
+    if (!s_bl_user_control) {
+        lv_label_set_text(objects.label_status, "Status: ignition mode");
+        return;
+    }
+
     ESP_LOGI(TAG, "action_click_start triggered");
     
     const char * filename = lv_textarea_get_text(objects.textarea_filename);
-    if(strlen(filename) > 0) {
-        strncpy(current_filename, filename, sizeof(current_filename)-1);
-        current_filename[sizeof(current_filename)-1] = '\0';
-        
-        saved_records = 0;
-        is_recording = true;
+    if (strlen(filename) > 0) {
+        if (sd_card_start_recording(filename) != ESP_OK) {
+            lv_label_set_text(objects.label_status, "Status: start failed");
+            return;
+        }
         
         // Hide panel
         if (objects.panel_new_file != NULL) {
@@ -119,7 +104,7 @@ void action_click_start(lv_event_t * e) {
         
         // Update labels 
         char buf[156];
-        snprintf(buf, sizeof(buf), "File: %s", current_filename);
+        snprintf(buf, sizeof(buf), "File: %s", filename);
         lv_label_set_text(objects.label_file, buf);
         lv_label_set_text(objects.label_status, "Status: recording...");
         
@@ -127,10 +112,10 @@ void action_click_start(lv_event_t * e) {
         lv_obj_clear_state(objects.button_save, LV_STATE_DISABLED);
         lv_obj_add_state(objects.button_new__file, LV_STATE_DISABLED);
         
-        // Start logger task once
-        if(sd_logger_handle == NULL) {
-            xTaskCreate(sd_logger_task, "sd_logger", 4096, NULL, 5, &sd_logger_handle);
+        static bool status_timer_created = false;
+        if (!status_timer_created) {
             lv_timer_create(update_status_task, 5000, NULL);
+            status_timer_created = true;
         }
     }
 }
@@ -171,30 +156,198 @@ static void focus_filename_input(void) {
         return;
     }
 
-    if (kb_instance == NULL) {
-        uint32_t child_cnt = lv_obj_get_child_cnt(objects.panel_new_file);
-        for (uint32_t i = 0; i < child_cnt; i++) {
-            lv_obj_t *child = lv_obj_get_child(objects.panel_new_file, i);
-            if (lv_obj_check_type(child, &lv_keyboard_class)) {
-                kb_instance = child;
-                break;
-            }
-        }
-    }
-
-    if (kb_instance != NULL) {
-        lv_keyboard_set_textarea(kb_instance, objects.textarea_filename);
+    if (objects.keyboard_new_file != NULL) {
+        lv_keyboard_set_textarea(objects.keyboard_new_file, objects.textarea_filename);
         lv_obj_add_state(objects.textarea_filename, LV_STATE_FOCUSED);
         lv_event_send(objects.textarea_filename, LV_EVENT_FOCUSED, NULL);
     }
+}
+
+static void focus_wifi_input(lv_obj_t *textarea) {
+    if (textarea == NULL || objects.keyboard_wi_fi == NULL) {
+        return;
+    }
+
+    lv_obj_clear_flag(objects.keyboard_wi_fi, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(objects.keyboard_wi_fi, textarea);
+    lv_obj_add_state(textarea, LV_STATE_FOCUSED);
+    lv_event_send(textarea, LV_EVENT_FOCUSED, NULL);
+}
+
+static void hide_wifi_keyboard(void) {
+    if (objects.keyboard_wi_fi == NULL) {
+        return;
+    }
+
+    lv_keyboard_set_textarea(objects.keyboard_wi_fi, NULL);
+
+    if (objects.textarea_wifi_ssid != NULL) {
+        lv_obj_clear_state(objects.textarea_wifi_ssid, LV_STATE_FOCUSED);
+    }
+    if (objects.textarea_wifi_password != NULL) {
+        lv_obj_clear_state(objects.textarea_wifi_password, LV_STATE_FOCUSED);
+    }
+
+    lv_obj_add_flag(objects.keyboard_wi_fi, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void update_wifi_status_label(void) {
+    if (objects.label_wifi_status == NULL) {
+        return;
+    }
+
+    char status[64];
+    if (wifi_manager_get_status_text(status, sizeof(status)) == ESP_OK) {
+        lv_label_set_text(objects.label_wifi_status, status);
+    }
+}
+
+static void update_time_label(void) {
+    if (objects.label_time == NULL) {
+        return;
+    }
+
+    char time_text[32];
+    if (rtc_manager_format_current_time(time_text, sizeof(time_text)) == ESP_OK) {
+        lv_label_set_text(objects.label_time, time_text);
+    }
+}
+
+static void update_time_sync_label(void) {
+    if (objects.label_time_status == NULL) {
+        return;
+    }
+
+    lv_label_set_text(objects.label_time_status, wifi_manager_is_time_synced() ? "Synced" : "Not synced");
+}
+
+static void update_sd_mode_controls(void) {
+    if (objects.button_new__file == NULL || objects.button_save == NULL || objects.label_status == NULL) {
+        return;
+    }
+
+    if (s_bl_user_control) {
+        if (sd_card_is_recording()) {
+            lv_obj_add_state(objects.button_new__file, LV_STATE_DISABLED);
+            lv_obj_clear_state(objects.button_save, LV_STATE_DISABLED);
+        } else {
+            lv_obj_clear_state(objects.button_new__file, LV_STATE_DISABLED);
+            lv_obj_add_state(objects.button_save, LV_STATE_DISABLED);
+        }
+    } else {
+        lv_obj_add_state(objects.button_new__file, LV_STATE_DISABLED);
+        lv_obj_add_state(objects.button_save, LV_STATE_DISABLED);
+        if (!sd_card_is_recording()) {
+            lv_label_set_text(objects.label_status, "Status: waiting ignition");
+        }
+    }
+}
+
+void ui_save_init_controls(void) {
+    if (s_save_controls_initialized) {
+        return;
+    }
+
+    if (objects.keyboard_wi_fi != NULL) {
+        lv_obj_add_flag(objects.keyboard_wi_fi, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (objects.textarea_wifi_ssid != NULL && objects.textarea_wifi_password != NULL) {
+        char ssid[33] = {0};
+        char password[65] = {0};
+        if (wifi_manager_get_saved_credentials(ssid, sizeof(ssid), password, sizeof(password)) == ESP_OK) {
+            lv_textarea_set_text(objects.textarea_wifi_ssid, ssid);
+            lv_textarea_set_text(objects.textarea_wifi_password, password);
+        }
+    }
+
+    update_wifi_status_label();
+    update_time_label();
+    update_time_sync_label();
+
+    s_bl_user_control = (objects.switch_bl != NULL) && lv_obj_has_state(objects.switch_bl, LV_STATE_CHECKED);
+    sd_card_set_control_mode(s_bl_user_control);
+    update_sd_mode_controls();
+
+    s_save_controls_initialized = true;
+}
+
+void ui_save_tick(void) {
+    update_wifi_status_label();
+    update_time_label();
+    update_time_sync_label();
+
+    if (!s_bl_user_control) {
+        if (sd_card_is_recording()) {
+            char buf[32];
+            snprintf(buf, sizeof(buf), "Saved: %lu", sd_card_get_saved_records());
+            lv_label_set_text(objects.label_status, buf);
+        } else {
+            lv_label_set_text(objects.label_status, "Status: waiting ignition");
+        }
+    }
+}
+
+void action_click_ssid(lv_event_t * e) {
+    LV_UNUSED(e);
+    focus_wifi_input(objects.textarea_wifi_ssid);
+}
+
+void action_click_password(lv_event_t * e) {
+    LV_UNUSED(e);
+    focus_wifi_input(objects.textarea_wifi_password);
+}
+
+void action_cancel_keyboard_wifi(lv_event_t * e) {
+    LV_UNUSED(e);
+    hide_wifi_keyboard();
+}
+
+void action_ready_keyboard_wifi(lv_event_t * e) {
+    LV_UNUSED(e);
+    hide_wifi_keyboard();
+}
+
+void action_click_disconnect(lv_event_t * e) {
+    LV_UNUSED(e);
+    wifi_manager_disconnect();
+    hide_wifi_keyboard();
+    update_wifi_status_label();
+}
+
+void action_click_connect(lv_event_t * e) {
+    LV_UNUSED(e);
+
+    const char *ssid = lv_textarea_get_text(objects.textarea_wifi_ssid);
+    const char *password = lv_textarea_get_text(objects.textarea_wifi_password);
+    esp_err_t ret = wifi_manager_connect(ssid, password);
+
+    if (ret == ESP_OK) {
+        lv_label_set_text(objects.label_wifi_status, "Status: connected");
+        hide_wifi_keyboard();
+    } else {
+        lv_label_set_text(objects.label_wifi_status, "Status: connect failed");
+    }
+}
+
+void action_click_rtc(lv_event_t * e) {
+    LV_UNUSED(e);
+
+    esp_err_t ret = wifi_manager_sync_time();
+    if (ret == ESP_OK) 
+        update_time_label();
+
+    update_time_sync_label();
 }
 
 void action_switch_changed(lv_event_t * e) {
     LV_UNUSED(e);
 
     s_bl_user_control = (objects.switch_bl != NULL) && lv_obj_has_state(objects.switch_bl, LV_STATE_CHECKED);
+    sd_card_set_control_mode(s_bl_user_control);
     s_last_short_click_ms = 0;
     update_backlight_mode_label();
+    update_sd_mode_controls();
 
     ESP_LOGI(TAG, "BL control mode: %s", s_bl_user_control ? "User" : "Ignition");
 }
@@ -203,7 +356,9 @@ void ui_backlight_init_controls(void) {
     register_backlight_short_click_handlers();
 
     s_bl_user_control = (objects.switch_bl != NULL) && lv_obj_has_state(objects.switch_bl, LV_STATE_CHECKED);
+    sd_card_set_control_mode(s_bl_user_control);
     update_backlight_mode_label();
+    update_sd_mode_controls();
 }
 
 void ui_backlight_sync_ignition(uint8_t ignition) {

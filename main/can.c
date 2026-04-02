@@ -5,6 +5,7 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 #include <inttypes.h>
+#include "sd_card.h"
 
 static const char *TAG = "CAN_APP";
 
@@ -49,9 +50,11 @@ static void handle_rx_message(twai_message_t message) {
             if (current_can_data.ignition == 0 && new_ignition == 1) {
                 can_app_load_fuel_consumption();
                 ui_backlight_sync_ignition(new_ignition);
+                sd_card_on_ignition_on();
             } else if (current_can_data.ignition == 1 && new_ignition == 0) {
                 can_app_save_fuel_consumption();
                 ui_backlight_sync_ignition(new_ignition);
+                sd_card_on_ignition_off();
             }
             
             current_can_data.ignition = new_ignition;
@@ -74,8 +77,7 @@ static void handle_rx_message(twai_message_t message) {
             break;
         }
 
-        case 0x04394100: { // Brake Pedal Position
-            if (message.data[3] != 0xFF)
+        case 0x04394100: { // Throttle Pedal Position (0-0xFF)            
                 current_can_data.throttle_pedal = (uint8_t)message.data[3];
             break;
         }
@@ -104,6 +106,8 @@ static void handle_rx_message(twai_message_t message) {
             else {
                 current_can_data.rpm = 0;                
             }
+            if (message.data[7] != 0xFF)
+                current_can_data.rear_gear = ((uint8_t)message.data[7] & 0x04) ? 1 : 0;
             current_can_data.oil_temp = (int8_t) (message.data[3] - 40);
             break;
         }
@@ -123,14 +127,14 @@ static void handle_rx_message(twai_message_t message) {
         case 0x03029000: { // Brake Pedal Position
             uint16_t raw_data = (uint16_t)(((message.data[5] << 8) | message.data[6]) & 0xFFF);
             if (raw_data != 0xFFF)
-                current_can_data.brake_pedal = (uint16_t)raw_data;
+                current_can_data.brake_pedal = (uint16_t)raw_data; // 0-0x3FF
             break;
         }
 
         case 0x06314000: { // ESP Status
             uint8_t raw_data = (uint8_t)message.data[5] & 0xFF;    
             if (raw_data != 0xFF)
-                current_can_data.esp_stat = raw_data & 0x03;
+                current_can_data.esp_stat = raw_data & 0x03; // 0 - normal, 2 - sport, 3 - traction
             else
                 current_can_data.esp_stat = 0;
             break;

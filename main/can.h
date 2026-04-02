@@ -18,6 +18,7 @@ typedef struct {
     uint16_t range;
     int8_t oil_temp;
     uint8_t esp_stat; // bit 0: level 1, bit 1: level 2, bit 2: level 3
+    uint8_t rear_gear;
 } can_data_t;
 
 #define ESP_ON 0x0
