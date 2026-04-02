@@ -227,6 +227,24 @@
       "componentGroups": [],
       "userProperties": [],
       "name": "click_connect"
+    },
+    {
+      "objID": "a1671239-6f6d-4979-cc8d-77e78828e2c4",
+      "components": [],
+      "connectionLines": [],
+      "localVariables": [],
+      "componentGroups": [],
+      "userProperties": [],
+      "name": "cancel_keyboard_wifi"
+    },
+    {
+      "objID": "3646a3b3-fa6d-450b-be83-ddfbbd638f26",
+      "components": [],
+      "connectionLines": [],
+      "localVariables": [],
+      "componentGroups": [],
+      "userProperties": [],
+      "name": "ready_keyboard_wifi"
     }
   ],
   "userPages": [
@@ -4166,7 +4184,7 @@
                                       "left": -759,
                                       "top": 174,
                                       "width": 50,
-                                      "height": 21,
+                                      "height": 53,
                                       "customInputs": [],
                                       "customOutputs": [],
                                       "style": {
@@ -4183,6 +4201,56 @@
                                       "widthUnit": "%",
                                       "heightUnit": "content",
                                       "children": [
+                                        {
+                                          "objID": "c39466d9-0d4f-4e8f-b5c6-8e14c7735d85",
+                                          "type": "LVGLLabelWidget",
+                                          "left": 0,
+                                          "top": 0,
+                                          "width": 102,
+                                          "height": 21,
+                                          "customInputs": [],
+                                          "customOutputs": [],
+                                          "style": {
+                                            "objID": "fd3ac49d-9db9-497e-f536-9a5e6b497e26",
+                                            "useStyle": "default",
+                                            "conditionalStyles": [],
+                                            "childStyles": []
+                                          },
+                                          "timeline": [],
+                                          "eventHandlers": [],
+                                          "identifier": "label_time_status",
+                                          "leftUnit": "px",
+                                          "topUnit": "px",
+                                          "widthUnit": "content",
+                                          "heightUnit": "content",
+                                          "children": [],
+                                          "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
+                                          "hiddenFlagType": "literal",
+                                          "clickableFlagType": "literal",
+                                          "flagScrollbarMode": "",
+                                          "flagScrollDirection": "",
+                                          "scrollSnapX": "",
+                                          "scrollSnapY": "",
+                                          "checkedStateType": "literal",
+                                          "disabledStateType": "literal",
+                                          "states": "",
+                                          "localStyles": {
+                                            "objID": "f3e5e87e-751d-4b8d-d528-9b52f8a1606e",
+                                            "definition": {
+                                              "MAIN": {
+                                                "DEFAULT": {
+                                                  "text_font": "MONTSERRAT_18"
+                                                }
+                                              }
+                                            }
+                                          },
+                                          "group": "",
+                                          "groupIndex": 0,
+                                          "text": "Not synced",
+                                          "textType": "literal",
+                                          "longMode": "WRAP",
+                                          "recolor": false
+                                        },
                                         {
                                           "objID": "981a36b1-8e67-4fdc-bb16-299d4749bcf3",
                                           "type": "LVGLLabelWidget",
@@ -4547,8 +4615,8 @@
                               "pad_top": 10,
                               "layout": "FLEX",
                               "flex_flow": "COLUMN",
-                              "pad_left": 30,
-                              "pad_right": 30
+                              "pad_left": 10,
+                              "pad_right": 10
                             }
                           }
                         }
@@ -4573,7 +4641,22 @@
                       },
                       "hiddenInEditor": true,
                       "timeline": [],
-                      "eventHandlers": [],
+                      "eventHandlers": [
+                        {
+                          "objID": "ec81b21f-8214-47fe-eaeb-cedff72c5fe3",
+                          "eventName": "CANCEL",
+                          "handlerType": "action",
+                          "action": "cancel_keyboard_wifi",
+                          "userData": 0
+                        },
+                        {
+                          "objID": "ee3094a7-a03b-4b08-b249-f43e70f0c9e9",
+                          "eventName": "READY",
+                          "handlerType": "action",
+                          "action": "ready_keyboard_wifi",
+                          "userData": 0
+                        }
+                      ],
                       "identifier": "keyboard_wi_fi",
                       "leftUnit": "px",
                       "topUnit": "px",

@@ -630,8 +630,8 @@ void create_screen_screen_main() {
                             lv_obj_set_style_pad_top(obj, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
                             lv_obj_set_style_layout(obj, LV_LAYOUT_FLEX, LV_PART_MAIN | LV_STATE_DEFAULT);
                             lv_obj_set_style_flex_flow(obj, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN | LV_STATE_DEFAULT);
-                            lv_obj_set_style_pad_left(obj, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
-                            lv_obj_set_style_pad_right(obj, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_left(obj, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_right(obj, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
                             {
                                 lv_obj_t *parent_obj = obj;
                                 {
@@ -1143,6 +1143,15 @@ void create_screen_screen_main() {
                                                             {
                                                                 lv_obj_t *parent_obj = obj;
                                                                 {
+                                                                    // label_time_status
+                                                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                                                    objects.label_time_status = obj;
+                                                                    lv_obj_set_pos(obj, 0, 0);
+                                                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                                                    lv_obj_set_style_text_font(obj, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                                                    lv_label_set_text(obj, "Not synced");
+                                                                }
+                                                                {
                                                                     // label_time
                                                                     lv_obj_t *obj = lv_label_create(parent_obj);
                                                                     objects.label_time = obj;
@@ -1208,6 +1217,8 @@ void create_screen_screen_main() {
                             objects.keyboard_wi_fi = obj;
                             lv_obj_set_pos(obj, -20, 180);
                             lv_obj_set_size(obj, 579, 242);
+                            lv_obj_add_event_cb(obj, action_cancel_keyboard_wifi, LV_EVENT_CANCEL, (void *)0);
+                            lv_obj_add_event_cb(obj, action_ready_keyboard_wifi, LV_EVENT_READY, (void *)0);
                             lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
                             lv_obj_set_style_align(obj, LV_ALIGN_DEFAULT, LV_PART_MAIN | LV_STATE_DEFAULT);
                         }

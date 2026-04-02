@@ -64,6 +64,7 @@ typedef struct _objects_t {
     lv_obj_t *switch_bl;
     lv_obj_t *label_switch;
     lv_obj_t *container_rtc;
+    lv_obj_t *label_time_status;
     lv_obj_t *label_time;
     lv_obj_t *button_rtc;
     lv_obj_t *keyboard_wi_fi;

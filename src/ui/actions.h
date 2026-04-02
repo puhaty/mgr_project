@@ -20,6 +20,8 @@ extern void action_click_ssid(lv_event_t * e);
 extern void action_click_password(lv_event_t * e);
 extern void action_click_disconnect(lv_event_t * e);
 extern void action_click_connect(lv_event_t * e);
+extern void action_cancel_keyboard_wifi(lv_event_t * e);
+extern void action_ready_keyboard_wifi(lv_event_t * e);
 
 #ifdef __cplusplus
 }
