@@ -12,6 +12,8 @@
 
 objects_t objects;
 
+screen_screen_main_state_t screen_screen_main_state;
+
 //
 // Event handlers
 //
@@ -23,6 +25,8 @@ lv_obj_t *tick_value_change_obj;
 //
 
 void create_screen_screen_main() {
+    screen_screen_main_state_t *state = &screen_screen_main_state;
+    (void)state;
     lv_obj_t *obj = lv_obj_create(0);
     objects.screen_main = obj;
     lv_obj_set_pos(obj, 0, 0);
@@ -38,6 +42,64 @@ void create_screen_screen_main() {
             lv_tabview_set_act(obj, 2, LV_ANIM_OFF);
             {
                 lv_obj_t *parent_obj = obj;
+                {
+                    // tab_ai
+                    lv_obj_t *obj = lv_tabview_add_tab(parent_obj, "AI");
+                    objects.tab_ai = obj;
+                    {
+                        lv_obj_t *parent_obj = obj;
+                        {
+                            // container_can_1
+                            lv_obj_t *obj = lv_obj_create(parent_obj);
+                            objects.container_can_1 = obj;
+                            lv_obj_set_pos(obj, 0, 0);
+                            lv_obj_set_size(obj, LV_PCT(100), LV_PCT(100));
+                            lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_SCROLLABLE);
+                            lv_obj_set_style_layout(obj, LV_LAYOUT_GRID, LV_PART_MAIN | LV_STATE_CHECKED | LV_STATE_PRESSED);
+                            lv_obj_set_style_grid_cell_x_align(obj, LV_GRID_ALIGN_START, LV_PART_MAIN | LV_STATE_CHECKED | LV_STATE_PRESSED);
+                            lv_obj_set_style_bg_color(obj, lv_color_hex(0xffffffff), LV_PART_MAIN | LV_STATE_CHECKED | LV_STATE_PRESSED);
+                            lv_obj_set_style_layout(obj, LV_LAYOUT_GRID, LV_PART_MAIN | LV_STATE_FOCUSED);
+                            {
+                                static lv_coord_t dsc[] = {40, 40, 40, 40, 40, 40, LV_GRID_TEMPLATE_LAST};
+                                lv_obj_set_style_grid_row_dsc_array(obj, dsc, LV_PART_MAIN | LV_STATE_FOCUSED);
+                            }
+                            {
+                                static lv_coord_t dsc[] = {150, 100, LV_GRID_TEMPLATE_LAST};
+                                lv_obj_set_style_grid_column_dsc_array(obj, dsc, LV_PART_MAIN | LV_STATE_FOCUSED);
+                            }
+                            lv_obj_set_style_bg_color(obj, lv_color_hex(0xffbfbfbf), LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_bg_opa(obj, 100, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_radius(obj, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_top(obj, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            {
+                                lv_obj_t *parent_obj = obj;
+                                {
+                                    // meter_score
+                                    lv_obj_t *obj = lv_meter_create(parent_obj);
+                                    objects.meter_score = obj;
+                                    lv_obj_set_pos(obj, 229, 31);
+                                    lv_obj_set_size(obj, 334, 331);
+                                    {
+                                        lv_meter_scale_t *scale = lv_meter_add_scale(obj);
+                                        state->scale = scale;
+                                        lv_meter_set_scale_ticks(obj, scale, 41, 1, 5, lv_color_hex(0xffbe1fc3));
+                                        lv_meter_set_scale_major_ticks(obj, scale, 8, 3, 10, lv_color_hex(0xffe10c0c), 10);
+                                        lv_meter_set_scale_range(obj, scale, 0, 100, 300, 120);
+                                        {
+                                            lv_meter_indicator_t *indicator = lv_meter_add_needle_line(obj, scale, 3, lv_color_hex(0xffc60ddf), -28);
+                                            state->indicator = indicator;
+                                            lv_meter_set_indicator_value(obj, indicator, 30);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 {
                     // tab_can_data
                     lv_obj_t *obj = lv_tabview_add_tab(parent_obj, "CAN DATA");
@@ -1329,6 +1391,8 @@ void create_screen_screen_main() {
 }
 
 void tick_screen_screen_main() {
+    screen_screen_main_state_t *state = &screen_screen_main_state;
+    (void)state;
 }
 
 typedef void (*tick_screen_func_t)();

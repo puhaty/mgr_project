@@ -18,6 +18,9 @@ enum ScreensEnum {
 typedef struct _objects_t {
     lv_obj_t *screen_main;
     lv_obj_t *tabview_main;
+    lv_obj_t *tab_ai;
+    lv_obj_t *container_can_1;
+    lv_obj_t *meter_score;
     lv_obj_t *tab_can_data;
     lv_obj_t *container_can;
     lv_obj_t *panel_brake_pedal;
@@ -76,6 +79,13 @@ typedef struct _objects_t {
 } objects_t;
 
 extern objects_t objects;
+
+typedef struct {
+    lv_meter_scale_t *scale;
+    lv_meter_indicator_t *indicator;
+} screen_screen_main_state_t;
+
+extern screen_screen_main_state_t screen_screen_main_state;
 
 void create_screen_screen_main();
 void tick_screen_screen_main();

@@ -16,6 +16,7 @@
 #include "sd_card.h"
 #include "wifi_manager.h"
 #include "rtc_manager.h"
+#include "ai_model.h"
 
 #include <stdlib.h>
 #include <time.h>
@@ -76,6 +77,8 @@ void app_main()
         ui_save_init_controls();
         lvgl_port_unlock();
     }
+
+    ai_model_init();
 
     TickType_t xLastUITime = xTaskGetTickCount();
     TickType_t xLastCANTime = xLastUITime;
@@ -179,6 +182,8 @@ static void update_ui_can_data(can_data_t* data) {
         else if ((data->esp_stat & ESP_MASK) == ESP_OFF_LEVEL_1) esp_str = "D";
         else if ((data->esp_stat & ESP_MASK) == ESP_OFF_LEVEL_2) esp_str = "T";
         lv_label_set_text(objects.label_esp, esp_str);
+
+        ai_model_update_ui_locked();
 
         lvgl_port_unlock();
     }

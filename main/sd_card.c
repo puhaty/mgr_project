@@ -1,5 +1,6 @@
 #include "sd_card.h"
 #include "can.h"
+#include "ai_model.h"
 #include "rtc_manager.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -30,11 +31,13 @@ static void sd_logger_task(void *pvParameters)
     (void)pvParameters;
 
     while (1) {
-        if (s_is_recording) {
-            can_data_t *data = can_app_get_data();
+        // Feed the model with the same 100 ms CAN snapshot used by SD logging.
+        can_data_t sample = *can_app_get_data();
+        ai_model_process_sample(&sample);
 
+        if (s_is_recording) {
             // Save only while ignition is on.
-            if (data->ignition) {
+            if (sample.ignition) {
                 char filepath[160];
                 snprintf(filepath, sizeof(filepath), "%s/%s.csv", MOUNT_POINT, s_current_filename);
 
@@ -46,19 +49,19 @@ static void sd_logger_task(void *pvParameters)
                     }
 
                     fprintf(f, "%lu,%u,%u,%lu,%u,%u,%u,%.2f,%lu,%u,%d,%u,%u\n",
-                            data->timestamp,
-                            data->ignition,
-                            data->speed,
-                            data->rpm,
-                            data->throttle_pedal,
-                            data->brake_pedal,
-                            data->fuel_level,
-                            data->fuel_consumption,
-                            data->t_distance,
-                            data->range,
-                            data->oil_temp,
-                            data->esp_stat,
-                            data->rear_gear);
+                            sample.timestamp,
+                            sample.ignition,
+                            sample.speed,
+                            sample.rpm,
+                            sample.throttle_pedal,
+                            sample.brake_pedal,
+                            sample.fuel_level,
+                            sample.fuel_consumption,
+                            sample.t_distance,
+                            sample.range,
+                            sample.oil_temp,
+                            sample.esp_stat,
+                            sample.rear_gear);
 
                     fclose(f);
                     s_saved_records++;
