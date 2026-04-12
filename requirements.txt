@@ -1,0 +1,15 @@
+# Zależności do manipulacji danymi
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Zależności do wizualizacji i wykresów
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Zależności do Machine Learningu i TinyML
+scikit-learn>=1.2.0
+emlearn>=0.20.0
+
+# Środowisko interaktywne
+jupyter>=1.0.0
+notebook>=7.0.0
