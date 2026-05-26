@@ -10,10 +10,11 @@
 extern "C" {
 #endif
 
+// Order must match CLASS_ORDER in ML_training notebook: ["normal", "eco", "aggressive"]
 typedef enum {
-	AI_DRIVING_STYLE_AGGRESSIVE = 0,
-	AI_DRIVING_STYLE_NORMAL = 1,
-	AI_DRIVING_STYLE_ECO = 2
+	AI_DRIVING_STYLE_NORMAL = 0,
+	AI_DRIVING_STYLE_ECO = 1,
+	AI_DRIVING_STYLE_AGGRESSIVE = 2
 } ai_driving_style_t;
 
 typedef struct {

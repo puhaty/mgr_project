@@ -1,197 +1,306 @@
 #include "ai_model.h"
-#include "eco_model.h"
+#include "eco_model.h"       // ai_model/eco_model.h via INCLUDE_DIRS
+#include "feature_params.h"  // ai_model/feature_params.h — auto-generated from feature_quantizer.json
 #include "ui/screens.h"
 
 #include <limits.h>
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
-#define ML_WINDOW_SIZE 20
+// Must match WIN_N and STEP_N from ML_training notebook
+#define WIN_SIZE  30
+#define DIFF_SIZE 29  // WIN_SIZE - 1
 
-#define AI_SCORE_MIN 0
-#define AI_SCORE_MAX 100
+#define AI_SCORE_MIN   0
+#define AI_SCORE_MAX   100
 #define AI_SCORE_START 50
-#define AI_SCORE_STEP 1
+#define AI_SCORE_ECO_STEP 1
+#define AI_SCORE_AGGRESSIVE_STEP  1
 
-#define AI_METER_COLOR_ECO_MAX 0x2aff00
+#define AI_METER_COLOR_ECO_MAX        0x2aff00
 #define AI_METER_COLOR_AGGRESSIVE_MAX 0xff0000
 
-static float s_throttle_history[ML_WINDOW_SIZE] = {0};
-static int s_history_index = 0;
-static int s_history_count = 0;
-static uint32_t s_last_timestamp = 0;
-static float s_last_speed_ms = 0.0f;
+#define AI_TAB_COLOR_ECO_MAX        0x39B73E
+#define AI_TAB_COLOR_AGGRESSIVE_MAX 0xCB3328
 
-static volatile int32_t s_score = AI_SCORE_START;
+// MinMaxScaler parameters — see ai_model/feature_quantizer.json and feature_params.h
+// Feature order (matches notebook FEATURES list):
+//   [0]  speed_mean       [1]  speed_std        [2]  speed_p95
+//   [3]  rpm_mean         [4]  rpm_std           [5]  rpm_p95
+//   [6]  throttle_mean    [7]  throttle_std      [8]  throttle_p95
+//   [9]  throttle_dp95    [10] brake_mean        [11] brake_p95
+//   [12] brake_dp95       [13] a_mean            [14] a_std
+//   [15] a_p95            [16] a_p05             [17] abs_a_mean
+//   [18] jerk_abs_mean    [19] jerk_abs_p95
+
+// Ring buffers: indices [0]=speed(km/h) [1]=rpm [2]=throttle [3]=brake [4]=accel(m/s²)
+static float s_buf[5][WIN_SIZE];
+static int   s_buf_head  = 0;
+static int   s_buf_count = 0;
+
+static uint32_t s_last_ts    = 0;
+static float    s_last_spd_ms = 0.0f;
+
+static volatile int32_t           s_score = AI_SCORE_START;
 static volatile ai_driving_style_t s_style = AI_DRIVING_STYLE_NORMAL;
-static volatile bool s_ready = false;
-static bool s_meter_neutral_color_initialized = false;
-static lv_color_t s_meter_neutral_color;
+static volatile bool              s_ready  = false;
 
-static int16_t clamp_to_i16(float value)
+static bool       s_meter_color_init = false;
+static lv_color_t s_meter_neutral_color;
+static bool       s_tab_color_init = false;
+static lv_color_t s_tab_neutral_color;
+
+// Temp arrays (static to stay off the task stack)
+static float s_ord[5][WIN_SIZE];       // ring buffer in temporal order
+static float s_srt[5][WIN_SIZE];       // sorted versions
+static float s_diff[3][DIFF_SIZE];     // [0]=|thr_diff| [1]=|brk_diff| [2]=|jerk|
+static float s_srt_diff[3][DIFF_SIZE]; // sorted versions of s_diff
+
+static int float_cmp(const void *a, const void *b)
 {
-	if (value > (float)INT16_MAX) {
-		return INT16_MAX;
-	}
-	if (value < (float)INT16_MIN) {
-		return INT16_MIN;
-	}
-	return (int16_t)lrintf(value);
+    float fa = *(const float *)a;
+    float fb = *(const float *)b;
+    return (fa > fb) - (fa < fb);
 }
 
-static float compute_throttle_std(void)
+// Linear interpolation percentile matching numpy default (method='linear')
+static float percentile_sorted(const float *sorted, int n, float p)
 {
-	float sum = 0.0f;
-	float variance = 0.0f;
+    float idx = p * (float)(n - 1);
+    int lo = (int)idx;
+    int hi = lo + 1;
+    if (hi >= n) return sorted[n - 1];
+    return sorted[lo] + (idx - (float)lo) * (sorted[hi] - sorted[lo]);
+}
 
-	for (int i = 0; i < ML_WINDOW_SIZE; i++) {
-		sum += s_throttle_history[i];
-	}
-	float mean = sum / (float)ML_WINDOW_SIZE;
+static float arr_mean(const float *arr, int n)
+{
+    float s = 0.0f;
+    for (int i = 0; i < n; i++) s += arr[i];
+    return s / (float)n;
+}
 
-	for (int i = 0; i < ML_WINDOW_SIZE; i++) {
-		float diff = s_throttle_history[i] - mean;
-		variance += diff * diff;
-	}
+// Population std (ddof=0), matching numpy default
+static float arr_std(const float *arr, int n, float m)
+{
+    float v = 0.0f;
+    for (int i = 0; i < n; i++) {
+        float d = arr[i] - m;
+        v += d * d;
+    }
+    return sqrtf(v / (float)n);
+}
 
-	return sqrtf(variance / (float)ML_WINDOW_SIZE);
+static int16_t clamp_i16(float v)
+{
+    if (v > (float)INT16_MAX) return INT16_MAX;
+    if (v < (float)INT16_MIN) return INT16_MIN;
+    return (int16_t)lrintf(v);
+}
+
+static void reset_window(void)
+{
+    memset(s_buf,   0, sizeof(s_buf));
+    s_buf_head   = 0;
+    s_buf_count  = 0;
+    s_last_ts    = 0;
+    s_last_spd_ms = 0.0f;
 }
 
 void ai_model_init(void)
 {
-	memset(s_throttle_history, 0, sizeof(s_throttle_history));
-	s_history_index = 0;
-	s_history_count = 0;
-	s_last_timestamp = 0;
-	s_last_speed_ms = 0.0f;
-
-	s_score = AI_SCORE_START;
-	s_style = AI_DRIVING_STYLE_NORMAL;
-	s_ready = false;
+    reset_window();
+    s_score = AI_SCORE_START;
+    s_style = AI_DRIVING_STYLE_NORMAL;
+    s_ready = false;
 }
 
 void ai_model_process_sample(const can_data_t *data)
 {
-	if (data == NULL) {
-		return;
-	}
+    if (data == NULL) return;
 
-	if (!data->ignition) {
-		s_history_index = 0;
-		s_history_count = 0;
-		s_last_timestamp = 0;
-		s_last_speed_ms = 0.0f;
-		s_style = AI_DRIVING_STYLE_NORMAL;
-		s_ready = false;
-		return;
-	}
+    // Mirror training-data filters: ignition on, not in reverse, not stopped (speed_mean >= 2 km/h)
+    if (!data->ignition || data->rear_gear || data->speed < 2) {
+        reset_window();
+        s_style = AI_DRIVING_STYLE_NORMAL;
+        s_ready = false;
+        return;
+    }
 
-	float dt_s = 0.1f;
-	if (s_last_timestamp > 0 && data->timestamp > s_last_timestamp) {
-		dt_s = ((float)(data->timestamp - s_last_timestamp)) / 1000.0f;
-		if (dt_s < 0.01f) {
-			dt_s = 0.01f;
-		}
-	}
-	s_last_timestamp = data->timestamp;
+    float dt_s = 0.1f;
+    if (s_last_ts > 0 && data->timestamp > s_last_ts) {
+        dt_s = (float)(data->timestamp - s_last_ts) / 1000.0f;
+        if (dt_s < 0.01f) dt_s = 0.01f;
+    }
+    s_last_ts = data->timestamp;
 
-	float current_speed_ms = ((float)data->speed) / 3.6f;
-	float acceleration = (current_speed_ms - s_last_speed_ms) / dt_s;
-	s_last_speed_ms = current_speed_ms;
+    float spd_ms = (float)data->speed / 3.6f;
+    float accel  = (spd_ms - s_last_spd_ms) / dt_s;
+    s_last_spd_ms = spd_ms;
 
-	s_throttle_history[s_history_index] = (float)data->throttle_pedal;
-	s_history_index = (s_history_index + 1) % ML_WINDOW_SIZE;
-	if (s_history_count < ML_WINDOW_SIZE) {
-		s_history_count++;
-	}
+    s_buf[0][s_buf_head] = (float)data->speed;
+    s_buf[1][s_buf_head] = (float)data->rpm;
+    s_buf[2][s_buf_head] = (float)data->throttle_pedal;
+    s_buf[3][s_buf_head] = (float)data->brake_pedal;
+    s_buf[4][s_buf_head] = accel;
+    s_buf_head = (s_buf_head + 1) % WIN_SIZE;
+    if (s_buf_count < WIN_SIZE) s_buf_count++;
 
-	if (s_history_count < ML_WINDOW_SIZE) {
-		s_ready = false;
-		return;
-	}
+    if (s_buf_count < WIN_SIZE) {
+        s_ready = false;
+        return;
+    }
 
-	float throttle_std = compute_throttle_std();
+    // Unroll ring buffer into temporal order (oldest → newest)
+    for (int b = 0; b < 5; b++) {
+        for (int i = 0; i < WIN_SIZE; i++) {
+            s_ord[b][i] = s_buf[b][(s_buf_head + i) % WIN_SIZE];
+        }
+        memcpy(s_srt[b], s_ord[b], WIN_SIZE * sizeof(float));
+        qsort(s_srt[b], WIN_SIZE, sizeof(float), float_cmp);
+    }
 
-	int16_t features[6];
-	features[0] = (int16_t)data->speed;
-	features[1] = clamp_to_i16((float)data->rpm);
-	features[2] = (int16_t)data->throttle_pedal;
-	features[3] = clamp_to_i16((float)data->brake_pedal);
-	features[4] = clamp_to_i16(acceleration);
-	features[5] = clamp_to_i16(throttle_std);
+    // Absolute differences: throttle, brake, jerk (|diff(accel)|)
+    for (int i = 0; i < DIFF_SIZE; i++) {
+        s_diff[0][i] = fabsf(s_ord[2][i + 1] - s_ord[2][i]);
+        s_diff[1][i] = fabsf(s_ord[3][i + 1] - s_ord[3][i]);
+        s_diff[2][i] = fabsf(s_ord[4][i + 1] - s_ord[4][i]);
+    }
+    for (int d = 0; d < 3; d++) {
+        memcpy(s_srt_diff[d], s_diff[d], DIFF_SIZE * sizeof(float));
+        qsort(s_srt_diff[d], DIFF_SIZE, sizeof(float), float_cmp);
+    }
 
-	int prediction = (int)eco_model_predict(features, 6);
-	if (prediction < AI_DRIVING_STYLE_AGGRESSIVE || prediction > AI_DRIVING_STYLE_ECO) {
-		return;
-	}
+    float spd_mean = arr_mean(s_ord[0], WIN_SIZE);
+    float rpm_mean = arr_mean(s_ord[1], WIN_SIZE);
+    float thr_mean = arr_mean(s_ord[2], WIN_SIZE);
+    float brk_mean = arr_mean(s_ord[3], WIN_SIZE);
+    float a_mean   = arr_mean(s_ord[4], WIN_SIZE);
 
-	s_style = (ai_driving_style_t)prediction;
-	s_ready = true;
+    float abs_a_mean = 0.0f;
+    for (int i = 0; i < WIN_SIZE; i++) abs_a_mean += fabsf(s_ord[4][i]);
+    abs_a_mean /= (float)WIN_SIZE;
 
-	if (s_style == AI_DRIVING_STYLE_ECO && s_score < AI_SCORE_MAX) {
-		s_score += AI_SCORE_STEP;
-	} else if (s_style == AI_DRIVING_STYLE_AGGRESSIVE && s_score > AI_SCORE_MIN) {
-		s_score -= AI_SCORE_STEP;
-	}
+    float raw[20];
+    raw[0]  = spd_mean;
+    raw[1]  = arr_std(s_ord[0], WIN_SIZE, spd_mean);
+    raw[2]  = percentile_sorted(s_srt[0], WIN_SIZE, 0.95f);
+    raw[3]  = rpm_mean;
+    raw[4]  = arr_std(s_ord[1], WIN_SIZE, rpm_mean);
+    raw[5]  = percentile_sorted(s_srt[1], WIN_SIZE, 0.95f);
+    raw[6]  = thr_mean;
+    raw[7]  = arr_std(s_ord[2], WIN_SIZE, thr_mean);
+    raw[8]  = percentile_sorted(s_srt[2], WIN_SIZE, 0.95f);
+    raw[9]  = percentile_sorted(s_srt_diff[0], DIFF_SIZE, 0.95f);
+    raw[10] = brk_mean;
+    raw[11] = percentile_sorted(s_srt[3], WIN_SIZE, 0.95f);
+    raw[12] = percentile_sorted(s_srt_diff[1], DIFF_SIZE, 0.95f);
+    raw[13] = a_mean;
+    raw[14] = arr_std(s_ord[4], WIN_SIZE, a_mean);
+    raw[15] = percentile_sorted(s_srt[4], WIN_SIZE, 0.95f);
+    raw[16] = percentile_sorted(s_srt[4], WIN_SIZE, 0.05f);
+    raw[17] = abs_a_mean;
+    raw[18] = arr_mean(s_diff[2], DIFF_SIZE);
+    raw[19] = percentile_sorted(s_srt_diff[2], DIFF_SIZE, 0.95f);
 
-	if (s_score < AI_SCORE_MIN) {
-		s_score = AI_SCORE_MIN;
-	}
-	if (s_score > AI_SCORE_MAX) {
-		s_score = AI_SCORE_MAX;
-	}
+    int16_t features[20];
+    for (int i = 0; i < 20; i++) {
+        features[i] = clamp_i16(raw[i] * FEAT_SCALE[i] + FEAT_MIN[i]);
+    }
+
+    int pred = (int)eco_model_predict(features, 20);
+    if (pred < 0 || pred > 2) return;
+
+    s_style = (ai_driving_style_t)pred;
+    s_ready = true;
+
+    if (s_style == AI_DRIVING_STYLE_ECO && s_score < AI_SCORE_MAX) {
+        s_score += AI_SCORE_ECO_STEP;
+    } else if (s_style == AI_DRIVING_STYLE_AGGRESSIVE && s_score > AI_SCORE_MIN) {
+        s_score -= AI_SCORE_AGGRESSIVE_STEP;
+    }
+    if (s_score < AI_SCORE_MIN) s_score = AI_SCORE_MIN;
+    if (s_score > AI_SCORE_MAX) s_score = AI_SCORE_MAX;
 }
 
 void ai_model_get_snapshot(ai_model_snapshot_t *out_snapshot)
 {
-	if (out_snapshot == NULL) {
-		return;
-	}
-
-	out_snapshot->score = s_score;
-	out_snapshot->style = s_style;
-	out_snapshot->ready = s_ready;
+    if (out_snapshot == NULL) return;
+    out_snapshot->score = s_score;
+    out_snapshot->style = s_style;
+    out_snapshot->ready = s_ready;
 }
 
 void ai_model_update_ui_locked(void)
 {
-	ai_model_snapshot_t snapshot;
-	ai_model_get_snapshot(&snapshot);
+    ai_model_snapshot_t snap;
+    ai_model_get_snapshot(&snap);
 
-	if (objects.meter_score != NULL && screen_screen_main_state.indicator != NULL) {
-		lv_meter_set_indicator_value(
-			objects.meter_score,
-			screen_screen_main_state.indicator,
-			snapshot.score
-		);
+    if (objects.meter_score == NULL || screen_screen_main_state.indicator == NULL) return;
 
-		if (!s_meter_neutral_color_initialized) {
-			s_meter_neutral_color = lv_obj_get_style_bg_color(objects.meter_score, LV_PART_MAIN | LV_STATE_DEFAULT);
-			s_meter_neutral_color_initialized = true;
-		}
+    lv_meter_set_indicator_value(
+        objects.meter_score,
+        screen_screen_main_state.indicator,
+        snap.score
+    );
 
-		int32_t score = snapshot.score;
-		if (score < AI_SCORE_MIN) {
-			score = AI_SCORE_MIN;
-		} else if (score > AI_SCORE_MAX) {
-			score = AI_SCORE_MAX;
-		}
+    if (!s_meter_color_init) {
+        s_meter_neutral_color = lv_obj_get_style_bg_color(
+            objects.meter_score, LV_PART_MAIN | LV_STATE_DEFAULT
+        );
+        s_meter_color_init = true;
+    }
 
-		lv_color_t target_color = s_meter_neutral_color;
-		uint8_t mix = 0;
+    int32_t score = snap.score;
+    if (score < AI_SCORE_MIN) score = AI_SCORE_MIN;
+    if (score > AI_SCORE_MAX) score = AI_SCORE_MAX;
 
-		if (score < AI_SCORE_START) {
-			target_color = lv_color_hex(AI_METER_COLOR_AGGRESSIVE_MAX);
-			mix = (uint8_t)(((AI_SCORE_START - score) * 255) / AI_SCORE_START);
-		} else if (score > AI_SCORE_START) {
-			target_color = lv_color_hex(AI_METER_COLOR_ECO_MAX);
-			mix = (uint8_t)(((score - AI_SCORE_START) * 255) / (AI_SCORE_MAX - AI_SCORE_START));
-		}
+    lv_color_t target = s_meter_neutral_color;
+    uint8_t mix = 0;
 
-		lv_obj_set_style_bg_color(
-			objects.meter_score,
-			lv_color_mix(target_color, s_meter_neutral_color, mix),
-			LV_PART_MAIN | LV_STATE_DEFAULT
-		);
-	}
+    if (score < AI_SCORE_START) {
+        target = lv_color_hex(AI_METER_COLOR_AGGRESSIVE_MAX);
+        mix = (uint8_t)(((AI_SCORE_START - score) * 255) / AI_SCORE_START);
+    } else if (score > AI_SCORE_START) {
+        target = lv_color_hex(AI_METER_COLOR_ECO_MAX);
+        mix = (uint8_t)(((score - AI_SCORE_START) * 255) / (AI_SCORE_MAX - AI_SCORE_START));
+    }
+
+    lv_obj_set_style_bg_color(
+        objects.meter_score,
+        lv_color_mix(target, s_meter_neutral_color, mix),
+        LV_PART_MAIN | LV_STATE_DEFAULT
+    );
+
+    if (objects.container_can_1 != NULL) {
+        if (!s_tab_color_init) {
+            s_tab_neutral_color = lv_obj_get_style_bg_color(
+                objects.container_can_1, LV_PART_MAIN | LV_STATE_DEFAULT
+            );
+            s_tab_color_init = true;
+        }
+
+        lv_color_t tab_color;
+        if (!snap.ready || snap.style == AI_DRIVING_STYLE_NORMAL) {
+            tab_color = s_tab_neutral_color;
+        } else if (snap.style == AI_DRIVING_STYLE_AGGRESSIVE) {
+            tab_color = lv_color_hex(AI_TAB_COLOR_AGGRESSIVE_MAX);
+        } else {
+            tab_color = lv_color_hex(AI_TAB_COLOR_ECO_MAX);
+        }
+        lv_obj_set_style_bg_color(
+            objects.container_can_1,
+            tab_color,
+            LV_PART_MAIN | LV_STATE_DEFAULT
+        );
+
+        if (objects.container_can != NULL) {
+            lv_obj_set_style_bg_color(
+                objects.container_can,
+                tab_color,
+                LV_PART_MAIN | LV_STATE_DEFAULT
+            );
+        }
+    }
 }

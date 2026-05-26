@@ -25,6 +25,7 @@
 
 // Function prototypes for initializing and testing SD card functions
 esp_err_t waveshare_sd_card_init();
+void sd_card_start_logger_task(void);
 
 // Recording control mode: false = ignition auto mode, true = user/manual mode
 void sd_card_set_control_mode(bool user_control_mode);

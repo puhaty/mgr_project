@@ -1,11 +1,16 @@
 #include "rtc_manager.h"
 
 #include "esp_log.h"
+#include "nvs.h"
+#include "nvs_flash.h"
 #include "waveshare_rgb_lcd_port.h"
 
 #include <freertos/FreeRTOS.h>
 #include <string.h>
 #include <sys/time.h>
+
+#define RTC_NVS_NAMESPACE "rtc"
+#define RTC_NVS_KEY_TS    "ts"
 
 #define PCF85063A_ADDRESS 0x51
 #define RTC_CTRL_1_ADDR 0x00
@@ -157,6 +162,57 @@ esp_err_t rtc_manager_sync_rtc_from_system(void)
     time_t now = time(NULL);
     struct tm timeinfo;
     localtime_r(&now, &timeinfo);
+    esp_err_t ret = rtc_manager_write_time(&timeinfo);
+    if (ret == ESP_OK) {
+        rtc_manager_save_to_nvs();
+    }
+    return ret;
+}
+
+esp_err_t rtc_manager_save_to_nvs(void)
+{
+    time_t now = time(NULL);
+    if (now < 0) {
+        return ESP_FAIL;
+    }
+
+    nvs_handle_t handle;
+    esp_err_t ret = nvs_open(RTC_NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    ret = nvs_set_i64(handle, RTC_NVS_KEY_TS, (int64_t)now);
+    if (ret == ESP_OK) {
+        ret = nvs_commit(handle);
+    }
+    nvs_close(handle);
+    return ret;
+}
+
+esp_err_t rtc_manager_restore_from_nvs(void)
+{
+    nvs_handle_t handle;
+    esp_err_t ret = nvs_open(RTC_NVS_NAMESPACE, NVS_READONLY, &handle);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    int64_t ts = 0;
+    ret = nvs_get_i64(handle, RTC_NVS_KEY_TS, &ts);
+    nvs_close(handle);
+
+    if (ret != ESP_OK || ts <= 0) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    struct timeval tv = { .tv_sec = (time_t)ts, .tv_usec = 0 };
+    if (settimeofday(&tv, NULL) != 0) {
+        return ESP_FAIL;
+    }
+
+    struct tm timeinfo;
+    localtime_r((time_t *)&ts, &timeinfo);
     return rtc_manager_write_time(&timeinfo);
 }
 

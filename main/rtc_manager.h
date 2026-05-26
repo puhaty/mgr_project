@@ -13,5 +13,7 @@ esp_err_t rtc_manager_sync_system_from_rtc(void);
 esp_err_t rtc_manager_sync_rtc_from_system(void);
 bool rtc_manager_time_is_valid(const struct tm *timeinfo);
 esp_err_t rtc_manager_format_current_time(char *buffer, size_t buffer_size);
+esp_err_t rtc_manager_save_to_nvs(void);
+esp_err_t rtc_manager_restore_from_nvs(void);
 
 #endif

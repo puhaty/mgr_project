@@ -54,7 +54,10 @@ void app_main()
     ESP_ERROR_CHECK(wifi_manager_init());
 
     if (rtc_manager_sync_system_from_rtc() != ESP_OK) {
-        ESP_LOGW(TAG, "RTC time not valid at boot");
+        ESP_LOGW(TAG, "RTC time not valid at boot, trying NVS");
+        if (rtc_manager_restore_from_nvs() != ESP_OK) {
+            ESP_LOGW(TAG, "NVS time also not available");
+        }
     }
 
     // Initialize SD card handler
@@ -79,6 +82,7 @@ void app_main()
     }
 
     ai_model_init();
+    sd_card_start_logger_task();
 
     TickType_t xLastUITime = xTaskGetTickCount();
     TickType_t xLastCANTime = xLastUITime;
@@ -132,6 +136,7 @@ static void maybe_enter_deep_sleep_on_can_timeout(void) {
 
     ESP_LOGI(TAG, "No CAN traffic for %lu ms (Ignition mode). Entering deep sleep.", (unsigned long)idle_ms);
 
+    rtc_manager_save_to_nvs();
     wavesahre_rgb_lcd_bl_off();
 
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);

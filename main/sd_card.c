@@ -23,8 +23,17 @@ static uint32_t s_fallback_file_counter = 0;
 static bool s_sd_ready = false;
 static uint8_t s_consecutive_open_failures = 0;
 
+static void sd_logger_task(void *pvParameters);
 static esp_err_t sd_card_start_recording_internal(const char *filename);
 static esp_err_t sd_card_build_auto_filename(char *buffer, size_t buffer_size);
+
+void sd_card_start_logger_task(void)
+{
+    if (s_sd_logger_handle != NULL) {
+        return;
+    }
+    xTaskCreate(sd_logger_task, "sd_logger", 4096, NULL, 5, &s_sd_logger_handle);
+}
 
 static void sd_logger_task(void *pvParameters)
 {
@@ -264,8 +273,7 @@ static esp_err_t sd_card_start_recording_internal(const char *filename)
     s_consecutive_open_failures = 0;
 
     if (s_sd_logger_handle == NULL) {
-        BaseType_t ret = xTaskCreate(sd_logger_task, "sd_logger", 4096, NULL, 5, &s_sd_logger_handle);
-        if (ret != pdPASS) {
+        if (xTaskCreate(sd_logger_task, "sd_logger", 4096, NULL, 5, &s_sd_logger_handle) != pdPASS) {
             s_is_recording = false;
             s_current_filename[0] = '\0';
             return ESP_FAIL;
