@@ -13,8 +13,8 @@
 #define DIFF_SIZE 29  // WIN_SIZE - 1
 
 #define AI_SCORE_MIN   0
-#define AI_SCORE_MAX   100
-#define AI_SCORE_START 50
+#define AI_SCORE_MAX   1000
+#define AI_SCORE_START 500
 #define AI_SCORE_ECO_STEP 1
 #define AI_SCORE_AGGRESSIVE_STEP  1
 
@@ -242,7 +242,7 @@ void ai_model_update_ui_locked(void)
     lv_meter_set_indicator_value(
         objects.meter_score,
         screen_screen_main_state.indicator,
-        snap.score
+        snap.score * 100 / AI_SCORE_MAX
     );
 
     if (!s_meter_color_init) {
