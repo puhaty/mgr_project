@@ -7,7 +7,8 @@ file(GLOB_RECURSE SRC_FILES
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 set(GEN_SCRIPT  "${CMAKE_CURRENT_LIST_DIR}/ai_model/gen_params.py")
-set(GEN_INPUT   "${CMAKE_CURRENT_LIST_DIR}/ai_model/feature_quantizer.json")
+set(GEN_INPUTS  "${CMAKE_CURRENT_LIST_DIR}/ai_model/feature_quantizer.json"
+                "${CMAKE_CURRENT_LIST_DIR}/ai_model/driving_style_quantizer.json")
 set(GEN_OUTPUT  "${CMAKE_CURRENT_LIST_DIR}/ai_model/feature_params.h")
 
 # Always generate at configure time so the header exists for compilation
@@ -28,8 +29,8 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     add_custom_command(
         OUTPUT  "${GEN_OUTPUT}"
         COMMAND ${Python3_EXECUTABLE} "${GEN_SCRIPT}"
-        DEPENDS "${GEN_INPUT}" "${GEN_SCRIPT}"
-        COMMENT "Generating feature_params.h from feature_quantizer.json"
+        DEPENDS ${GEN_INPUTS} "${GEN_SCRIPT}"
+        COMMENT "Generating feature_params.h from the quantizer JSONs"
     )
     target_sources(${COMPONENT_LIB} PRIVATE "${GEN_OUTPUT}")
     set_source_files_properties("${GEN_OUTPUT}" PROPERTIES GENERATED TRUE HEADER_FILE_ONLY TRUE)

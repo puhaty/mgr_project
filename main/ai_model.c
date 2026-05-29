@@ -1,6 +1,5 @@
 #include "ai_model.h"
-#include "eco_model.h"       // ai_model/eco_model.h via INCLUDE_DIRS
-#include "feature_params.h"  // ai_model/feature_params.h — auto-generated from feature_quantizer.json
+#include "feature_params.h"  // ai_model/feature_params.h — auto-generated from the quantizer JSONs
 #include "ui/screens.h"
 
 #include <limits.h>
@@ -8,9 +7,45 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Must match WIN_N and STEP_N from ML_training notebook
-#define WIN_SIZE  30
-#define DIFF_SIZE 29  // WIN_SIZE - 1
+// ---- Model selection -------------------------------------------------------
+// Exactly one trained model is compiled in. Switch the active model by changing
+// AI_MODEL_VARIANT (here or via a -D build flag). Only the selected model header
+// is #included, so the unused model's tree arrays never reach the compiler.
+//   AI_MODEL_VARIANT_RANDOM_FOREST -> ai_model/driving_style_model.h (current)
+//   AI_MODEL_VARIANT_EXTRA_TREES   -> ai_model/eco_model.h           (legacy)
+// Both models share the same 20 features and feature order; only the trained
+// tree and the MinMaxScaler params (feature_params.h) differ.
+#define AI_MODEL_VARIANT_EXTRA_TREES    0
+#define AI_MODEL_VARIANT_RANDOM_FOREST  1
+
+#ifndef AI_MODEL_VARIANT
+#define AI_MODEL_VARIANT  AI_MODEL_VARIANT_RANDOM_FOREST
+#endif
+
+#if AI_MODEL_VARIANT == AI_MODEL_VARIANT_RANDOM_FOREST
+    #include "driving_style_model.h"
+    #define AI_MODEL_PREDICT  driving_style_model_predict
+    #define AI_FEAT_SCALE     RANDOM_FOREST_FEAT_SCALE
+    #define AI_FEAT_MIN       RANDOM_FOREST_FEAT_MIN
+#elif AI_MODEL_VARIANT == AI_MODEL_VARIANT_EXTRA_TREES
+    #include "eco_model.h"
+    #define AI_MODEL_PREDICT  eco_model_predict
+    #define AI_FEAT_SCALE     EXTRA_TREES_FEAT_SCALE
+    #define AI_FEAT_MIN       EXTRA_TREES_FEAT_MIN
+#else
+    #error "Invalid AI_MODEL_VARIANT — pick AI_MODEL_VARIANT_EXTRA_TREES or AI_MODEL_VARIANT_RANDOM_FOREST"
+#endif
+// ---------------------------------------------------------------------------
+
+// Window length must match WIN_N from the ML notebooks: 5s at 10Hz = 50 samples.
+// The logger task feeds one sample every 100ms (see sd_card.c), matching the
+// notebook's fixed 10Hz resample grid.
+#define WIN_SIZE  50
+#define DIFF_SIZE 49  // WIN_SIZE - 1
+
+// Fixed sample period (s) used for per-second derivatives, matching the notebook
+// constant DT = 0.1 (d_throttle_s, d_brake_s, jerk_ms3 are all divided by DT).
+#define DT_S 0.1f
 
 #define AI_SCORE_MIN   0
 #define AI_SCORE_MAX   1000
@@ -24,8 +59,8 @@
 #define AI_TAB_COLOR_ECO_MAX        0x39B73E
 #define AI_TAB_COLOR_AGGRESSIVE_MAX 0xCB3328
 
-// MinMaxScaler parameters — see ai_model/feature_quantizer.json and feature_params.h
-// Feature order (matches notebook FEATURES list):
+// MinMaxScaler parameters — see ai_model/*_quantizer.json and feature_params.h
+// Feature order (identical in both notebooks / quantizer JSONs):
 //   [0]  speed_mean       [1]  speed_std        [2]  speed_p95
 //   [3]  rpm_mean         [4]  rpm_std           [5]  rpm_p95
 //   [6]  throttle_mean    [7]  throttle_std      [8]  throttle_p95
@@ -161,11 +196,15 @@ void ai_model_process_sample(const can_data_t *data)
         qsort(s_srt[b], WIN_SIZE, sizeof(float), float_cmp);
     }
 
-    // Absolute differences: throttle, brake, jerk (|diff(accel)|)
+    // Per-second derivatives (divide by DT, matching notebook d_*_s = diff / DT):
+    //  [0] d_throttle_s (signed), [1] d_brake_s (signed), [2] |jerk_ms3| (abs)
+    // throttle/brake keep their sign — *_dp95 takes the upper tail (sharp presses),
+    // so signed vs abs matters when releases are sharper than presses.
+    const float inv_dt = 1.0f / DT_S;
     for (int i = 0; i < DIFF_SIZE; i++) {
-        s_diff[0][i] = fabsf(s_ord[2][i + 1] - s_ord[2][i]);
-        s_diff[1][i] = fabsf(s_ord[3][i + 1] - s_ord[3][i]);
-        s_diff[2][i] = fabsf(s_ord[4][i + 1] - s_ord[4][i]);
+        s_diff[0][i] = (s_ord[2][i + 1] - s_ord[2][i]) * inv_dt;
+        s_diff[1][i] = (s_ord[3][i + 1] - s_ord[3][i]) * inv_dt;
+        s_diff[2][i] = fabsf(s_ord[4][i + 1] - s_ord[4][i]) * inv_dt;
     }
     for (int d = 0; d < 3; d++) {
         memcpy(s_srt_diff[d], s_diff[d], DIFF_SIZE * sizeof(float));
@@ -182,7 +221,7 @@ void ai_model_process_sample(const can_data_t *data)
     for (int i = 0; i < WIN_SIZE; i++) abs_a_mean += fabsf(s_ord[4][i]);
     abs_a_mean /= (float)WIN_SIZE;
 
-    float raw[20];
+    float raw[FEAT_COUNT];
     raw[0]  = spd_mean;
     raw[1]  = arr_std(s_ord[0], WIN_SIZE, spd_mean);
     raw[2]  = percentile_sorted(s_srt[0], WIN_SIZE, 0.95f);
@@ -204,12 +243,12 @@ void ai_model_process_sample(const can_data_t *data)
     raw[18] = arr_mean(s_diff[2], DIFF_SIZE);
     raw[19] = percentile_sorted(s_srt_diff[2], DIFF_SIZE, 0.95f);
 
-    int16_t features[20];
-    for (int i = 0; i < 20; i++) {
-        features[i] = clamp_i16(raw[i] * FEAT_SCALE[i] + FEAT_MIN[i]);
+    int16_t features[FEAT_COUNT];
+    for (int i = 0; i < FEAT_COUNT; i++) {
+        features[i] = clamp_i16(raw[i] * AI_FEAT_SCALE[i] + AI_FEAT_MIN[i]);
     }
 
-    int pred = (int)eco_model_predict(features, 20);
+    int pred = (int)AI_MODEL_PREDICT(features, FEAT_COUNT);
     if (pred < 0 || pred > 2) return;
 
     s_style = (ai_driving_style_t)pred;
