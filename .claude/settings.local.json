@@ -3,7 +3,16 @@
     "allow": [
       "Bash(Get-ChildItem -Path \"d:\\\\Studia\\\\mgr\\\\mgr_project\\\\ML_training\" -Force)",
       "Bash(Select-Object -Property Name, PSIsContainer)",
-      "Bash(Format-Table -AutoSize)"
+      "Bash(Format-Table -AutoSize)",
+      "Bash(python insert_percentile_viz.py)",
+      "Bash(python -c \"import json; nb=json.load\\(open\\('ML_training.ipynb',encoding='utf-8'\\)\\); [print\\(i, c.get\\('id','?'\\), c['cell_type']\\) for i,c in enumerate\\(nb['cells']\\)]\")",
+      "Bash(del \"d:\\\\Studia\\\\mgr\\\\mgr_project\\\\ML_training\\\\insert_percentile_viz.py\")",
+      "Bash(python -c ' *)",
+      "Bash(python patch_pseudo_label.py)",
+      "Bash(python patch_windows.py)",
+      "Bash(python patch_label2.py)",
+      "Bash(python create_noneco_notebook.py)",
+      "Bash(python create_driving_style_notebook.py)"
     ]
   }
 }

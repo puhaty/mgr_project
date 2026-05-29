@@ -1,6 +1,7 @@
 # Zależności do manipulacji danymi
 pandas>=2.0.0
 numpy>=1.24.0
+plotly>=6.7.0
 
 # Zależności do wizualizacji i wykresów
 matplotlib>=3.7.0
