@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 360" width="320" height="360">
+  <!-- Stage 3: young sapling, small canopy -->
+  <ellipse cx="160" cy="330" rx="120" ry="26" fill="#5e3f24"/>
+  <ellipse cx="160" cy="322" rx="120" ry="22" fill="#7a5230"/>
+  <ellipse cx="160" cy="312" rx="116" ry="14" fill="#6cc04a"/>
+  <!-- trunk -->
+  <path d="M160 316 C156 270 156 230 160 200" stroke="#8a5a2b" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <!-- a couple of branches -->
+  <path d="M159 244 C148 236 140 230 132 226" stroke="#8a5a2b" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M161 252 C172 244 180 240 188 236" stroke="#8a5a2b" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- canopy: clustered circles -->
+  <circle cx="160" cy="188" r="46" fill="#3f8a2e"/>
+  <circle cx="128" cy="206" r="34" fill="#5aa83f"/>
+  <circle cx="192" cy="206" r="34" fill="#5aa83f"/>
+  <circle cx="160" cy="172" r="34" fill="#7cc659"/>
+  <circle cx="142" cy="196" r="26" fill="#7cc659"/>
+  <circle cx="180" cy="196" r="26" fill="#7cc659"/>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 360" width="320" height="360">
+  <!-- Stage 2: seedling with a few leaves -->
+  <ellipse cx="160" cy="330" rx="120" ry="26" fill="#5e3f24"/>
+  <ellipse cx="160" cy="322" rx="120" ry="22" fill="#7a5230"/>
+  <ellipse cx="160" cy="312" rx="116" ry="14" fill="#6cc04a"/>
+  <!-- stem -->
+  <path d="M160 314 C157 280 157 258 160 232" stroke="#6f4720" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <!-- leaf pairs -->
+  <path d="M160 270 C140 262 128 268 124 282 C146 286 158 280 160 270 Z" fill="#5aa83f"/>
+  <path d="M160 270 C180 262 192 268 196 282 C174 286 162 280 160 270 Z" fill="#7cc659"/>
+  <path d="M160 246 C144 240 134 246 131 258 C150 261 159 255 160 246 Z" fill="#5aa83f"/>
+  <path d="M160 246 C176 240 186 246 189 258 C170 261 161 255 160 246 Z" fill="#7cc659"/>
+  <!-- top bud -->
+  <circle cx="160" cy="230" r="12" fill="#7cc659"/>
+</svg>

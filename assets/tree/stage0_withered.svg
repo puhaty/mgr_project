@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 360" width="320" height="360">
+  <!-- Stage 0: withered seed/sprout — rock bottom, persistent aggressive driving -->
+  <!-- dry cracked soil mound (grey-brown, no grass) -->
+  <ellipse cx="160" cy="330" rx="120" ry="26" fill="#4a3724"/>
+  <ellipse cx="160" cy="322" rx="120" ry="22" fill="#6b5238"/>
+  <ellipse cx="160" cy="313" rx="116" ry="13" fill="#8a7152"/>
+  <!-- cracks in the dry soil -->
+  <path d="M120 312 l8 8 l-4 6" stroke="#4a3724" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M196 314 l-6 7 l5 5" stroke="#4a3724" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M160 316 l2 8" stroke="#4a3724" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- drooping dead stem -->
+  <path d="M160 312 C161 300 166 294 174 292" stroke="#7a6a4a" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- two wilted, drooping brown leaves -->
+  <path d="M174 292 C182 290 188 294 189 302 C180 304 174 300 174 292 Z" fill="#9a7b3c"/>
+  <path d="M168 296 C162 300 158 306 160 314 C167 310 170 304 168 296 Z" fill="#8a6a30"/>
+  <!-- cracked dry seed at base -->
+  <ellipse cx="158" cy="311" rx="7" ry="5" fill="#5e4426"/>
+  <path d="M155 309 l5 4" stroke="#3a2c18" stroke-width="1.5" fill="none"/>
+</svg>

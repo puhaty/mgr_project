@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<title>Tree stages preview</title>
+<style>
+  body { margin:0; font-family: system-ui, sans-serif; background:#1e1e1e; color:#ddd; }
+  h1 { font-size:18px; padding:16px; margin:0; }
+  .row { display:flex; align-items:center; gap:8px; padding:8px 16px; }
+  .row h2 { width:110px; font-size:14px; margin:0; }
+  .strip { display:flex; gap:10px; flex-wrap:wrap; }
+  .cell { width:160px; height:180px; border-radius:10px; display:flex; flex-direction:column;
+          align-items:center; justify-content:flex-end; overflow:hidden; }
+  .cell img { width:160px; height:180px; object-fit:contain; }
+  .cap { text-align:center; font-size:11px; padding:4px; }
+  .neutral { background:#bfbfbf; }
+  .eco { background:#39B73E; }
+  .aggr { background:#CB3328; }
+  .label { color:#222; }
+</style>
+</head>
+<body>
+  <h1>Etapy drzewa eco — podgląd na 3 tłach (neutralne / eco / agresja)</h1>
+  <div id="app"></div>
+<script>
+  const stages = [
+    ["stage0_withered.svg","0 · uschnięte"],
+    ["stage1_seed.svg","1 · nasionko"],
+    ["stage2_seedling.svg","2 · siewka"],
+    ["stage3_sapling.svg","3 · drzewko"],
+    ["stage4_mature.svg","4 · dojrzałe"],
+    ["stage5_flowering.svg","5 · kwitnące"],
+    ["stage6_fruiting.svg","6 · owocujące"],
+  ];
+  const bgs = [["neutral","Neutralne"],["eco","Eco (zielone)"],["aggr","Agresja (czerwone)"]];
+  const app = document.getElementById("app");
+  for (const [cls,name] of bgs) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<h2>${name}</h2>`;
+    const strip = document.createElement("div");
+    strip.className = "strip";
+    for (const [src,cap] of stages) {
+      const cell = document.createElement("div");
+      cell.className = "cell " + cls;
+      cell.innerHTML = `<img src="${src}"/><div class="cap label">${cap}</div>`;
+      strip.appendChild(cell);
+    }
+    row.appendChild(strip);
+    app.appendChild(row);
+  }
+</script>
+</body>
+</html>

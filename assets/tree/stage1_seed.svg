@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 360" width="320" height="360">
+  <!-- Stage 1: seed sprouting from soil -->
+  <!-- soil mound -->
+  <ellipse cx="160" cy="330" rx="120" ry="26" fill="#5e3f24"/>
+  <ellipse cx="160" cy="322" rx="120" ry="22" fill="#7a5230"/>
+  <!-- grass line -->
+  <ellipse cx="160" cy="312" rx="116" ry="14" fill="#6cc04a"/>
+  <!-- sprout: short stem -->
+  <path d="M160 312 C158 296 158 288 160 278" stroke="#5aa83f" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- two tiny seed leaves -->
+  <path d="M160 286 C146 280 138 286 136 296 C150 298 158 294 160 286 Z" fill="#7cc659"/>
+  <path d="M160 286 C174 280 182 286 184 296 C170 298 162 294 160 286 Z" fill="#7cc659"/>
+  <!-- small seed at base -->
+  <ellipse cx="160" cy="310" rx="7" ry="5" fill="#8a5a2b"/>
+</svg>

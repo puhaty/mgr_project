@@ -36,6 +36,117 @@ static uint32_t s_last_short_click_ms = 0;
 static bool s_short_click_handlers_registered = false;
 static bool s_save_controls_initialized = false;
 
+#define UI_PAGER_MAX_DOTS 8
+static lv_obj_t *s_page_dots[UI_PAGER_MAX_DOTS];
+static uint32_t s_page_dot_count = 0;
+
+static void update_page_dots(uint32_t active_idx) {
+    for (uint32_t i = 0; i < s_page_dot_count; i++) {
+        bool active = (i == active_idx);
+        lv_obj_set_style_bg_color(s_page_dots[i],
+            lv_color_hex(active ? 0xff333333 : 0xffb0b0b0), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_size(s_page_dots[i], active ? 14 : 10, active ? 14 : 10);
+    }
+}
+
+// Center text of all labels inside a tile (handles nested containers).
+static void center_labels_recursive(lv_obj_t *obj) {
+    if (lv_obj_check_type(obj, &lv_label_class)) {
+        lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+        return;
+    }
+    for (uint32_t i = 0; i < lv_obj_get_child_cnt(obj); i++) {
+        center_labels_recursive(lv_obj_get_child(obj, i));
+    }
+}
+
+static void tabview_page_changed_cb(lv_event_t *e) {
+    lv_obj_t *tv = lv_event_get_target(e);
+    update_page_dots(lv_tabview_get_tab_act(tv));
+}
+
+void ui_pager_init(void) {
+    lv_obj_t *tv = objects.tabview_main;
+    if (tv == NULL) {
+        return;
+    }
+
+    // Hide tab button bar; tabview flex layout expands content to full screen.
+    lv_obj_add_flag(lv_tabview_get_tab_btns(tv), LV_OBJ_FLAG_HIDDEN);
+
+    lv_obj_t *content = lv_tabview_get_content(tv);
+    uint32_t tab_count = lv_obj_get_child_cnt(content);
+    if (tab_count > UI_PAGER_MAX_DOTS) {
+        tab_count = UI_PAGER_MAX_DOTS;
+    }
+    s_page_dot_count = tab_count;
+
+    // Full-bleed only on the AI tab: remove theme padding and corner radius
+    // of its root container. CAN and SAVE tabs keep the framed look.
+    if (objects.tab_ai != NULL) {
+        lv_obj_set_style_pad_all(objects.tab_ai, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        for (uint32_t j = 0; j < lv_obj_get_child_cnt(objects.tab_ai); j++) {
+            lv_obj_set_style_radius(lv_obj_get_child(objects.tab_ai, j), 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        }
+    }
+
+    // Pages grew by the hidden tab bar height; reserve bottom space so the
+    // dot indicator does not overlap page content and grid rows keep the
+    // original spacing.
+    if (objects.tab_can_data != NULL) {
+        lv_obj_set_style_pad_bottom(objects.tab_can_data, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+
+    // Scale CAN tiles up to fill their grid cells; fixed gaps between tiles.
+    if (objects.container_can != NULL) {
+        lv_obj_set_style_pad_left(objects.container_can, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_right(objects.container_can, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_bottom(objects.container_can, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_row(objects.container_can, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_column(objects.container_can, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+        for (uint32_t j = 0; j < lv_obj_get_child_cnt(objects.container_can); j++) {
+            lv_obj_t *tile = lv_obj_get_child(objects.container_can, j);
+            lv_obj_set_style_grid_cell_x_align(tile, LV_GRID_ALIGN_STRETCH, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_grid_cell_y_align(tile, LV_GRID_ALIGN_STRETCH, LV_PART_MAIN | LV_STATE_DEFAULT);
+            // Spread title/value labels over the taller tile.
+            lv_obj_set_style_flex_main_place(tile, LV_FLEX_ALIGN_SPACE_EVENLY, LV_PART_MAIN | LV_STATE_DEFAULT);
+            center_labels_recursive(tile);
+        }
+    }
+    if (objects.tab_save != NULL) {
+        lv_obj_set_style_pad_bottom(objects.tab_save, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+
+    // Distribute SAVE page sections vertically instead of piling at the top.
+    if (objects.container_save != NULL) {
+        lv_obj_set_style_flex_main_place(objects.container_save, LV_FLEX_ALIGN_SPACE_EVENLY,
+                                         LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+
+    // Dot indicator overlay at the bottom of the screen.
+    lv_obj_t *dots = lv_obj_create(objects.screen_main);
+    lv_obj_remove_style_all(dots);
+    lv_obj_set_size(dots, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(dots, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(dots, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(dots, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_clear_flag(dots, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_align(dots, LV_ALIGN_BOTTOM_MID, 0, -8);
+
+    for (uint32_t i = 0; i < tab_count; i++) {
+        lv_obj_t *dot = lv_obj_create(dots);
+        lv_obj_remove_style_all(dot);
+        lv_obj_set_size(dot, 10, 10);
+        lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_clear_flag(dot, LV_OBJ_FLAG_CLICKABLE);
+        s_page_dots[i] = dot;
+    }
+
+    lv_obj_add_event_cb(tv, tabview_page_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    update_page_dots(lv_tabview_get_tab_act(tv));
+}
+
 static void update_status_task(lv_timer_t * timer) {
     if (sd_card_is_recording()) {
         char buf[32];

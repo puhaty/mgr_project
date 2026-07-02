@@ -3,3 +3,4 @@ build/
 dependencies.lock
 sdkconfig
 components/lvgl__lvgl/
+CLAUDE.md

@@ -27,6 +27,7 @@ void ui_backlight_init_controls(void);
 bool ui_backlight_is_user_control(void);
 void ui_save_init_controls(void);
 void ui_save_tick(void);
+void ui_pager_init(void);
 
 extern void ui_save_init_controls(void);
 extern void ui_save_tick(void);
@@ -76,6 +77,7 @@ void app_main()
     // Initialize UI once under LVGL mutex.
     if (lvgl_port_lock(-1)) {
         ui_init();
+        ui_pager_init();
         ui_backlight_init_controls();
         ui_save_init_controls();
         lvgl_port_unlock();
