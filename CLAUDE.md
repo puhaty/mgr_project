@@ -5,3 +5,6 @@
 # Styl konwersacji ze mną
 - zawsze w języku polskim
 - odpowiadaj rzeczowo bez lania wody
+
+# styl pracy
+- nie builduj aplikacji, tylko zmiany w kodzie rób
