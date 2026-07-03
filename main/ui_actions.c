@@ -11,6 +11,8 @@
 #include "sd_card.h"
 #include "wifi_manager.h"
 #include "rtc_manager.h"
+#include "ai_model.h"
+#include "nvs.h"
 
 static const char *TAG = "ui_actions";
 
@@ -40,6 +42,69 @@ static bool s_save_controls_initialized = false;
 static lv_obj_t *s_page_dots[UI_PAGER_MAX_DOTS];
 static uint32_t s_page_dot_count = 0;
 
+// Screen "brightness": the backlight pin sits on the CH422G I2C expander
+// (on/off only, no PWM), so dimming is simulated with a black overlay on the
+// LVGL top layer whose opacity grows as brightness drops. The overlay is not
+// clickable, so touches pass through. Range 20-100% keeps the screen readable.
+#define UI_BRIGHTNESS_MIN     20
+#define UI_BRIGHTNESS_MAX     100
+#define UI_BRIGHTNESS_NVS_NS  "storage"
+#define UI_BRIGHTNESS_NVS_KEY "brightness"
+
+static lv_obj_t *s_dim_overlay = NULL;
+
+static void apply_brightness(int32_t percent) {
+    if (percent < UI_BRIGHTNESS_MIN) percent = UI_BRIGHTNESS_MIN;
+    if (percent > UI_BRIGHTNESS_MAX) percent = UI_BRIGHTNESS_MAX;
+
+    if (s_dim_overlay == NULL) {
+        s_dim_overlay = lv_obj_create(lv_layer_top());
+        lv_obj_remove_style_all(s_dim_overlay);
+        lv_obj_clear_flag(s_dim_overlay, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_size(s_dim_overlay, LV_PCT(100), LV_PCT(100));
+        lv_obj_set_style_bg_color(s_dim_overlay, lv_color_black(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+
+    lv_opa_t opa = (lv_opa_t)((UI_BRIGHTNESS_MAX - percent) * 255 / UI_BRIGHTNESS_MAX);
+    if (opa == 0) {
+        lv_obj_add_flag(s_dim_overlay, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_set_style_bg_opa(s_dim_overlay, opa, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_clear_flag(s_dim_overlay, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+// Keep the LVGL FPS/CPU monitor off the AI page (clean scene) but visible on
+// the other pages. The monitor is a plain label LVGL creates lazily on the
+// system layer at the first refresh, so it is looked up on demand; until it
+// exists this is a no-op and ui_save_tick() retries periodically.
+static void update_perf_monitor_visibility(void) {
+    if (objects.tabview_main == NULL) {
+        return;
+    }
+
+    lv_obj_t *label = NULL;
+    lv_obj_t *sys = lv_layer_sys();
+    for (uint32_t i = 0; i < lv_obj_get_child_cnt(sys); i++) {
+        lv_obj_t *child = lv_obj_get_child(sys, i);
+        if (lv_obj_check_type(child, &lv_label_class)) {
+            label = child;
+            break;
+        }
+    }
+    if (label == NULL) {
+        return;
+    }
+
+    uint32_t act = lv_tabview_get_tab_act(objects.tabview_main);
+    lv_obj_t *page = lv_obj_get_child(lv_tabview_get_content(objects.tabview_main), act);
+    if (page == objects.tab_ai) {
+        lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
 static void update_page_dots(uint32_t active_idx) {
     for (uint32_t i = 0; i < s_page_dot_count; i++) {
         bool active = (i == active_idx);
@@ -47,6 +112,7 @@ static void update_page_dots(uint32_t active_idx) {
             lv_color_hex(active ? 0xff333333 : 0xffb0b0b0), LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_size(s_page_dots[i], active ? 14 : 10, active ? 14 : 10);
     }
+    update_perf_monitor_visibility();
 }
 
 // Center text of all labels inside a tile (handles nested containers).
@@ -65,6 +131,50 @@ static void tabview_page_changed_cb(lv_event_t *e) {
     update_page_dots(lv_tabview_get_tab_act(tv));
 }
 
+// Swipe anywhere on the screen switches pages, wrapping around at both ends
+// (last -> first and first -> last). Native content scrolling is disabled in
+// ui_pager_init(), so gestures are the only page navigation.
+static void screen_gesture_cb(lv_event_t *e) {
+    LV_UNUSED(e);
+
+    lv_obj_t *tv = objects.tabview_main;
+    if (tv == NULL) {
+        return;
+    }
+
+    // Don't flip pages while dragging horizontal controls (switch/slider).
+    lv_indev_t *indev = lv_indev_get_act();
+    lv_obj_t *pressed = lv_indev_get_obj_act();
+    if (indev == NULL) {
+        return;
+    }
+    if (pressed != NULL && (lv_obj_check_type(pressed, &lv_switch_class) ||
+                            lv_obj_check_type(pressed, &lv_slider_class))) {
+        return;
+    }
+
+    uint32_t count = lv_obj_get_child_cnt(lv_tabview_get_content(tv));
+    if (count < 2) {
+        return;
+    }
+
+    uint32_t act = lv_tabview_get_tab_act(tv);
+    lv_dir_t dir = lv_indev_get_gesture_dir(indev);
+    uint32_t next;
+    if (dir == LV_DIR_LEFT) {
+        next = (act + 1) % count;
+    } else if (dir == LV_DIR_RIGHT) {
+        next = (act + count - 1) % count;
+    } else {
+        return;
+    }
+
+    lv_tabview_set_act(tv, next, LV_ANIM_ON);
+    // lv_tabview_set_act() never emits VALUE_CHANGED (the tabview only sends
+    // it for finger-scrolled page changes), so refresh the dots here.
+    update_page_dots(next);
+}
+
 void ui_pager_init(void) {
     lv_obj_t *tv = objects.tabview_main;
     if (tv == NULL) {
@@ -75,33 +185,44 @@ void ui_pager_init(void) {
     lv_obj_add_flag(lv_tabview_get_tab_btns(tv), LV_OBJ_FLAG_HIDDEN);
 
     lv_obj_t *content = lv_tabview_get_content(tv);
+
+    // Loop-around paging: turn off the tabview's own swipe-scroll (it stops
+    // dead at the first/last page) and drive page changes from full-screen
+    // gestures instead — see screen_gesture_cb(). Programmatic
+    // lv_tabview_set_act() still animates via lv_obj_scroll_to_x().
+    lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(objects.screen_main, screen_gesture_cb, LV_EVENT_GESTURE, NULL);
     uint32_t tab_count = lv_obj_get_child_cnt(content);
     if (tab_count > UI_PAGER_MAX_DOTS) {
         tab_count = UI_PAGER_MAX_DOTS;
     }
     s_page_dot_count = tab_count;
 
-    // Full-bleed only on the AI tab: remove theme padding and corner radius
-    // of its root container. CAN and SAVE tabs keep the framed look.
-    if (objects.tab_ai != NULL) {
-        lv_obj_set_style_pad_all(objects.tab_ai, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        for (uint32_t j = 0; j < lv_obj_get_child_cnt(objects.tab_ai); j++) {
-            lv_obj_set_style_radius(lv_obj_get_child(objects.tab_ai, j), 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    // The legacy score meter (generated by EEZ Studio) is replaced by the
+    // eco-tree view; delete it before the first render so it never shows up.
+    if (objects.meter_score != NULL) {
+        lv_obj_del(objects.meter_score);
+        objects.meter_score = NULL;
+    }
+
+    // Full-bleed pages: strip the theme padding from every tab page and the
+    // corner radius from each page's root container. The old "framed card"
+    // look is gone — page backgrounds (grey on CAN/SAVE, meadow on AI) run
+    // edge to edge.
+    for (uint32_t i = 0; i < lv_obj_get_child_cnt(content); i++) {
+        lv_obj_t *page = lv_obj_get_child(content, i);
+        lv_obj_set_style_pad_all(page, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        for (uint32_t j = 0; j < lv_obj_get_child_cnt(page); j++) {
+            lv_obj_set_style_radius(lv_obj_get_child(page, j), 0, LV_PART_MAIN | LV_STATE_DEFAULT);
         }
     }
 
-    // Pages grew by the hidden tab bar height; reserve bottom space so the
-    // dot indicator does not overlap page content and grid rows keep the
-    // original spacing.
-    if (objects.tab_can_data != NULL) {
-        lv_obj_set_style_pad_bottom(objects.tab_can_data, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
-    }
-
     // Scale CAN tiles up to fill their grid cells; fixed gaps between tiles.
+    // pad_bottom 30 keeps the last grid row above the dot indicator overlay.
     if (objects.container_can != NULL) {
         lv_obj_set_style_pad_left(objects.container_can, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_pad_right(objects.container_can, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_bottom(objects.container_can, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_bottom(objects.container_can, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_pad_row(objects.container_can, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_pad_column(objects.container_can, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
         for (uint32_t j = 0; j < lv_obj_get_child_cnt(objects.container_can); j++) {
@@ -113,14 +234,45 @@ void ui_pager_init(void) {
             center_labels_recursive(tile);
         }
     }
-    if (objects.tab_save != NULL) {
-        lv_obj_set_style_pad_bottom(objects.tab_save, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
-    }
 
-    // Distribute SAVE page sections vertically instead of piling at the top.
-    if (objects.container_save != NULL) {
+    // Rework the SAVE page into two independent columns: [SD + Settings] on
+    // the left, [WiFi + Time] on the right. In the original row-based layout
+    // the taller WiFi box dictated the first row's height, leaving a gap
+    // between the (shorter) SD box and the Settings box below it. The
+    // generated row containers are repurposed as columns and the boxes are
+    // re-parented at runtime. pad_bottom 30 keeps content above the dots.
+    if (objects.container_save != NULL && objects.container_sd_wifi != NULL &&
+        objects.container_settings != NULL && objects.container_sd != NULL &&
+        objects.container_wifi != NULL && objects.container_bl != NULL &&
+        objects.container_rtc != NULL) {
+        lv_obj_set_style_flex_flow(objects.container_save, LV_FLEX_FLOW_ROW, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_flex_main_place(objects.container_save, LV_FLEX_ALIGN_SPACE_EVENLY,
                                          LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_bottom(objects.container_save, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+        // Left column: SD (content-sized) + Settings (fills the rest).
+        lv_obj_t *col_left = objects.container_sd_wifi;
+        lv_obj_set_size(col_left, LV_PCT(50), LV_PCT(100));
+        lv_obj_set_style_flex_flow(col_left, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_row(col_left, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+        // Right column: WiFi (fixed) + Time (fills the rest).
+        lv_obj_t *col_right = objects.container_settings;
+        lv_obj_set_size(col_right, LV_PCT(48), LV_PCT(100));
+        lv_obj_set_flex_grow(col_right, 0);
+        lv_obj_set_style_flex_flow(col_right, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_row(col_right, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+        lv_obj_set_parent(objects.container_bl, col_left);
+        lv_obj_set_parent(objects.container_wifi, col_right);
+        lv_obj_move_to_index(objects.container_wifi, 0);
+
+        lv_obj_set_size(objects.container_sd, LV_PCT(100), LV_SIZE_CONTENT);
+        lv_obj_set_size(objects.container_bl, LV_PCT(100), LV_SIZE_CONTENT);
+        lv_obj_set_flex_grow(objects.container_bl, 1);
+        lv_obj_set_size(objects.container_wifi, LV_PCT(100), 260);
+        lv_obj_set_size(objects.container_rtc, LV_PCT(100), LV_SIZE_CONTENT);
+        lv_obj_set_flex_grow(objects.container_rtc, 1);
     }
 
     // Dot indicator overlay at the bottom of the screen.
@@ -376,6 +528,18 @@ void ui_save_init_controls(void) {
     update_time_label();
     update_time_sync_label();
 
+    // Restore saved screen brightness (software dimming overlay).
+    uint8_t brightness = UI_BRIGHTNESS_MAX;
+    nvs_handle_t nvs;
+    if (nvs_open(UI_BRIGHTNESS_NVS_NS, NVS_READONLY, &nvs) == ESP_OK) {
+        nvs_get_u8(nvs, UI_BRIGHTNESS_NVS_KEY, &brightness);
+        nvs_close(nvs);
+    }
+    if (objects.slider_brightness != NULL) {
+        lv_slider_set_value(objects.slider_brightness, brightness, LV_ANIM_OFF);
+    }
+    apply_brightness(brightness);
+
     s_bl_user_control = (objects.switch_bl != NULL) && lv_obj_has_state(objects.switch_bl, LV_STATE_CHECKED);
     sd_card_set_control_mode(s_bl_user_control);
     update_sd_mode_controls();
@@ -387,6 +551,9 @@ void ui_save_tick(void) {
     update_wifi_status_label();
     update_time_label();
     update_time_sync_label();
+    // Fallback sync: the perf label may not exist yet when the pager starts
+    // on the AI page (it is created at the first LVGL refresh).
+    update_perf_monitor_visibility();
 
     if (!s_bl_user_control) {
         if (sd_card_is_recording()) {
@@ -449,6 +616,50 @@ void action_click_rtc(lv_event_t * e) {
         update_time_label();
 
     update_time_sync_label();
+}
+
+void action_brightness_changed(lv_event_t * e) {
+    apply_brightness(lv_slider_get_value(lv_event_get_target(e)));
+}
+
+// Persist only on release, not on every drag step (flash wear).
+void action_brightness_released(lv_event_t * e) {
+    uint8_t value = (uint8_t)lv_slider_get_value(lv_event_get_target(e));
+
+    nvs_handle_t handle;
+    if (nvs_open(UI_BRIGHTNESS_NVS_NS, NVS_READWRITE, &handle) != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to open NVS for brightness save");
+        return;
+    }
+    if (nvs_set_u8(handle, UI_BRIGHTNESS_NVS_KEY, value) == ESP_OK) {
+        nvs_commit(handle);
+    }
+    nvs_close(handle);
+}
+
+static void reset_orchard_msgbox_cb(lv_event_t * e)
+{
+    lv_obj_t *mbox = lv_event_get_current_target(e);
+    const char *btn = lv_msgbox_get_active_btn_text(mbox);
+
+    if (btn != NULL && strcmp(btn, "Reset") == 0) {
+        ai_model_reset_orchard();
+        ESP_LOGI(TAG, "Orchard reset confirmed");
+    }
+
+    lv_msgbox_close(mbox);
+}
+
+void action_click_reset_orchard(lv_event_t * e)
+{
+    LV_UNUSED(e);
+
+    static const char *btns[] = {"Reset", "Cancel", ""};
+    lv_obj_t *mbox = lv_msgbox_create(NULL, "Reset orchard",
+                                      "Remove all harvested trees from the orchard?",
+                                      btns, false);
+    lv_obj_add_event_cb(mbox, reset_orchard_msgbox_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_center(mbox);
 }
 
 void action_switch_changed(lv_event_t * e) {

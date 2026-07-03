@@ -25,6 +25,7 @@ typedef struct {
 
 void ai_model_init(void);
 void ai_model_process_sample(const can_data_t *data);
+void ai_model_reset_orchard(void);
 void ai_model_update_ui_locked(void);
 void ai_model_get_snapshot(ai_model_snapshot_t *out_snapshot);
 

@@ -22,6 +22,9 @@ extern void action_click_disconnect(lv_event_t * e);
 extern void action_click_connect(lv_event_t * e);
 extern void action_cancel_keyboard_wifi(lv_event_t * e);
 extern void action_ready_keyboard_wifi(lv_event_t * e);
+extern void action_click_reset_orchard(lv_event_t * e);
+extern void action_brightness_changed(lv_event_t * e);
+extern void action_brightness_released(lv_event_t * e);
 
 #ifdef __cplusplus
 }

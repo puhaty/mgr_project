@@ -17,6 +17,8 @@ extern const lv_img_dsc_t eco_tree_3_sapling;
 extern const lv_img_dsc_t eco_tree_4_mature;
 extern const lv_img_dsc_t eco_tree_5_flowering;
 extern const lv_img_dsc_t eco_tree_6_fruiting;
+extern const lv_img_dsc_t eco_meadow_bg;
+extern const lv_img_dsc_t eco_tree_orchard;
 
 // Stages ordered worst -> best (index 0 = withered, last = fruiting).
 extern const lv_img_dsc_t *const eco_tree_stages[ECO_TREE_STAGE_COUNT];
