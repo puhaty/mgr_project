@@ -1,5 +1,582 @@
 \clearpage % Rozdziały zaczynamy od nowej strony.
 \section{Projekt}
 
+Niniejszy rozdział przedstawia proces projektowania oraz implementacji systemu
+analizy stylu jazdy kierowcy. Opis prowadzony jest zgodnie z kolejnością
+realizacji prac: od koncepcji i architektury rozwiązania, poprzez dobór
+platformy sprzętowej, budowę podsystemu akwizycji danych z magistrali CAN oraz
+przygotowanie zbioru danych uczących, aż po trening i wybór modelu uczenia
+maszynowego, jego osadzenie na platformie docelowej oraz projekt interfejsu
+użytkownika wykorzystującego mechanizmy nudgingu i gamifikacji.
 
- 
+%---------------------------------------------------------------
+\subsection{Koncepcja i architektura systemu}
+\label{sec:architektura}
+
+System analizy stylu jazdy zrealizowano jako samodzielne urządzenie pokładowe,
+instalowane w kabinie pojazdu i podłączone do jego magistrali CAN (ang.
+\emph{Controller Area Network})~\cite{iso11898}. Całość funkcjonalności ---
+akwizycja danych telemetrycznych, ich przetwarzanie, klasyfikacja stylu jazdy
+z użyciem modelu uczenia maszynowego oraz prezentacja wyników kierowcy ---
+realizowana jest lokalnie, na pojedynczym module z mikrokontrolerem ESP32-S3
+i dotykowym wyświetlaczem, opisanym szczegółowo w podrozdziale~\ref{sec:platforma}.
+Przyjęcie takiej architektury, wpisującej się w koncepcję przetwarzania
+brzegowego (ang. \emph{edge computing}), wynika z trzech przesłanek. Po
+pierwsze, informacja zwrotna dla kierowcy musi być dostarczana w czasie
+rzeczywistym, a więc opóźnienia związane z transmisją danych do zewnętrznego
+serwera byłyby niepożądane. Po drugie, system pozostaje w pełni funkcjonalny
+niezależnie od dostępności łączności bezprzewodowej, co w warunkach jazdy
+(tunele, obszary słabego zasięgu) ma istotne znaczenie praktyczne. Po trzecie,
+dane opisujące sposób prowadzenia pojazdu nie opuszczają urządzenia, co
+eliminuje zastrzeżenia dotyczące prywatności ich przetwarzania. Samo połączenie
+telemetrii pokładowej z metodami uczenia maszynowego wpisuje się przy tym
+w aktualny nurt badań nad systemami analizy stylu jazdy~\cite{meiring2015}.
+
+W architekturze rozwiązania wyróżnić można trzy współpracujące ze sobą
+środowiska. Pierwszym jest pojazd, którego elektroniczne jednostki sterujące
+(ang. \emph{Electronic Control Unit}, ECU) nadają na magistralę CAN ramki
+zawierające sygnały wykorzystywane przez system, m.in. prędkość pojazdu,
+prędkość obrotową silnika, położenia pedałów oraz zużycie paliwa. Drugim jest
+opracowane urządzenie pokładowe, pełniące jednocześnie rolę jednostki
+obliczeniowej i panelu kierowcy. Trzecim środowiskiem jest komputer klasy PC,
+na którym odbywa się przygotowanie danych oraz trening
+modeli uczenia maszynowego. Podział ten odpowiada typowemu cyklowi budowy
+systemów uczenia maszynowego dla urządzeń wbudowanych: ze względu na
+ograniczone zasoby mikrokontrolera trening modelu przeprowadza się na
+komputerze, natomiast na urządzeniu docelowym osadzany jest wyłącznie wynikowy,
+zoptymalizowany klasyfikator.
+
+Praca systemu przebiega w dwóch fazach, których zestawienie zawiera
+tabela~\ref{tab:fazy-pracy}. W fazie akwizycji urządzenie pełni rolę
+rejestratora: odbierane z magistrali sygnały są parsowane, walidowane
+i zapisywane na karcie SD w postaci plików CSV ze stałą częstotliwością
+próbkowania 10~Hz. Zgromadzone w ten sposób nagrania rzeczywistych przejazdów
+stanowią zbiór uczący dla modeli klasyfikacji stylu jazdy. W fazie eksploatacji
+urządzenie wykonuje natomiast pełny łańcuch przetwarzania: strumień danych
+z magistrali analizowany jest w przesuwnych oknach czasowych, dla których
+wbudowany model wyznacza klasę stylu jazdy, a wynik klasyfikacji przekładany
+jest na informację zwrotną prezentowaną kierowcy. Funkcja rejestracji pozostaje
+przy tym aktywna również w fazie eksploatacji, dzięki czemu zbiór danych może
+być stale rozbudowywany, a model --- doskonalony w kolejnych iteracjach.
+
+\begin{table}[!h]
+    \centering
+    \caption{Zestawienie faz pracy systemu.}
+    \label{tab:fazy-pracy}
+    \begin{tabular}{| p{3.6cm} | p{5.1cm} | p{5.1cm} |} \hline
+        \textbf{Aspekt} & \textbf{Faza akwizycji danych} & \textbf{Faza eksploatacji} \\ \hline\hline
+        Cel pracy urządzenia & budowa zbioru danych uczących & ocena stylu jazdy w~czasie rzeczywistym \\ \hline
+        Źródło danych & magistrala CAN (tryb nasłuchu) & magistrala CAN (tryb nasłuchu) \\ \hline
+        Przetwarzanie na urządzeniu & parsowanie i walidacja sygnałów & parsowanie i walidacja sygnałów, ekstrakcja cech, predykcja modelu \\ \hline
+        Główny wynik & pliki CSV na karcie SD & klasa stylu jazdy, wskaźnik punktowy i~informacja zwrotna dla kierowcy \\ \hline
+        Trening modelu & offline, na komputerze PC & --- (model wbudowany w~oprogramowanie) \\ \hline
+        Zapis na kartę SD & tak, 10~Hz & tak (dalsza rozbudowa zbioru) \\ \hline
+    \end{tabular}
+\end{table}
+
+Fazy te nie są przy tym rozłączne w czasie --- tworzą cykl, w którym dane
+zebrane w fazie akwizycji umożliwiają wytrenowanie modelu, ten trafia do
+oprogramowania urządzenia pracującego w fazie eksploatacji, a rejestracja
+kontynuowana w tej fazie zasila kolejną iterację treningu. Cykl ten
+przedstawiono na rysunku~\ref{fig:cykl-faz}.
+
+\begin{figure}[!h]
+    \centering
+    \resizebox{0.85\linewidth}{!}{\input{tex/fig/cykl-faz.tikz}}
+    \caption{Iteracyjny cykl pomiędzy fazą akwizycji danych, treningiem modelu i fazą eksploatacji.}
+    \label{fig:cykl-faz}
+\end{figure}
+
+Przepływ danych w fazie eksploatacji przedstawiono na
+rysunku~\ref{fig:architektura}. Ramki CAN odbierane są w trybie wyłącznie
+nasłuchującym, gwarantującym brak ingerencji w komunikację pojazdu, po czym są
+parsowane na podstawie identyfikatorów i składane w spójny obraz bieżącego
+stanu pojazdu. Zadanie próbkujące odczytuje ten stan co 100~ms i przekazuje go
+równolegle do dwóch odbiorców: rejestratora zapisującego dane na karcie SD oraz
+modułu inferencji, który utrzymuje przesuwne okno obejmujące ostatnie pięć
+sekund jazdy. Na podstawie zawartości okna wyznaczany jest wektor cech
+statystycznych, poddawany kwantyzacji i klasyfikowany przez osadzony model
+drzewiasty. Wynik klasyfikacji aktualizuje wskaźnik punktowy oraz stan
+mechanizmów grywalizacyjnych, a warstwa graficzna zbudowana z użyciem
+biblioteki LVGL prezentuje je kierowcy. Pracę całości wspierają moduły
+pomocnicze: układ RTC znakuje dane czasem (z możliwością synchronizacji przez
+sieć bezprzewodową z użyciem protokołu NTP), pamięć NVS przechowuje parametry
+konfiguracyjne oraz liczniki wymagające trwałości między uruchomieniami,
+a mechanizm zarządzania energią wprowadza urządzenie w stan głębokiego uśpienia
+po wykryciu braku aktywności na magistrali.
+
+% Rysunek generowany w TikZ — źródło edytowalne: tex/fig/architektura.tikz
+\begin{figure}[!h]
+    \centering
+    \resizebox{\linewidth}{!}{\input{tex/fig/architektura.tikz}}
+    \caption{Schemat blokowy architektury systemu wraz z pętlą rozwoju modelu.}
+    \label{fig:architektura}
+\end{figure}
+
+Ogniwem spinającym obie fazy jest iteracyjny cykl rozwoju modelu. Zebrane
+nagrania przenoszone są do środowiska treningowego, gdzie po oczyszczeniu
+i etykietowaniu służą do wytrenowania klasyfikatorów; wybrany model jest
+następnie eksportowany do postaci statycznego kodu w języku C i dołączany do
+oprogramowania urządzenia na etapie kompilacji. Walidacja podczas rzeczywistych
+przejazdów dostarcza wniosków --- oraz kolejnych danych --- do następnej
+iteracji. Architekturę oprogramowania zaprojektowano przy tym tak, aby wymiana
+modelu sprowadzała się do podmiany wygenerowanych plików nagłówkowych i nie
+wymagała zmian w logice aplikacji; w toku prac pozwoliło to na równoległe
+utrzymywanie i porównywanie w jeździe dwóch wariantów klasyfikatora, opisanych
+szerzej w podrozdziale~\ref{sec:trening}.
+
+%---------------------------------------------------------------
+\subsection{Platforma sprzętowa}
+\label{sec:platforma}
+
+Wybór platformy sprzętowej stanowił jeden z pierwszych kroków w realizacji
+projektu, ponieważ determinował możliwości całego systemu --- zarówno
+w zakresie akwizycji danych z magistrali CAN, jak i lokalnego wykonywania
+predykcji modelu uczenia maszynowego. Punktem wyjścia była lista wymagań
+funkcjonalnych, jakie musi spełniać jednostka pełniąca jednocześnie rolę
+rejestratora danych i panelu kierowcy; na jej podstawie wybrano moduł
+integrujący wszystkie niezbędne interfejsy na jednej płytce.
+
+\subsubsection{Wymagania stawiane platformie}
+
+Wymagania wobec platformy sprzętowej wynikają bezpośrednio z założeń
+przyjętych w podrozdziale~\ref{sec:architektura} oraz z celu pracy: system ma
+odbierać dane z magistrali CAN, klasyfikować styl jazdy lokalnie (bez
+wsparcia zewnętrznych serwerów) i prezentować wynik kierowcy w czytelnej
+formie graficznej. Zestawienie wymagań wraz z ich uzasadnieniem oraz sposobem
+realizacji w wybranej platformie przedstawia tabela~\ref{tab:wymagania-platforma}.
+
+\begin{table}[!h]
+    \centering
+    \caption{Wymagania stawiane platformie sprzętowej.}
+    \label{tab:wymagania-platforma}
+    \begin{tabular}{| p{3.5cm} | p{5.3cm} | p{4.9cm} |} \hline
+        \textbf{Wymaganie} & \textbf{Uzasadnienie} & \textbf{Realizacja w~wybranej platformie} \\ \hline\hline
+        Interfejs CAN (odbiór danych) & bezpośredni dostęp do telemetrii pojazdu jest warunkiem koniecznym działania systemu & sprzętowy transceiver CAN połączony z~wbudowanym kontrolerem TWAI \\ \hline
+        Wydajność wystarczająca do lokalnej predykcji modelu & wymóg architektury przetwarzania brzegowego (p.~\ref{sec:architektura}) --- inferencja bez łączności zewnętrznej & dwurdzeniowy procesor Xtensa~LX7 do~240~MHz, 8~MB pamięci PSRAM \\ \hline
+        Wyświetlacz, najlepiej dotykowy & prezentacja interfejsu kierowcy zgodnie z~zasadami nudgingu i~gamifikacji (p.~\ref{sec:ui}) & wbudowany wyświetlacz IPS 4,3\textquotedbl{} 800$\times$480~px z~pojemnościowym panelem dotykowym \\ \hline
+        Slot karty pamięci & zapis nagrań z~magistrali CAN do~zbioru uczącego (p.~\ref{sec:akwizycja}, \ref{sec:dane}) & slot kart microSD, interfejs SPI \\ \hline
+        Układ RTC & znakowanie czasem rejestrowanych danych & układ PCF85063A z~podtrzymaniem bateryjnym \\ \hline
+        Łączność bezprzewodowa & synchronizacja czasu (NTP) & wbudowany moduł Wi-Fi 2,4~GHz (802.11~b/g/n) \\ \hline
+        Praca w~instalacji elektrycznej pojazdu & odporność na wahania napięcia zasilania (rozruch, praca alternatora) & wbudowany przetwornik napięcia, zasilanie w~zakresie 7--36~V DC \\ \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Moduł ESP32-S3-Touch-LCD-4.3B}
+
+Wymienione wymagania spełnia w całości pojedynczy moduł
+ESP32-S3-Touch-LCD-4.3B firmy Waveshare~\cite{waveshare2024}, integrujący na
+jednej płytce układ SoC, wyświetlacz z panelem dotykowym, transceiver CAN,
+slot karty pamięci, układ RTC oraz moduł łączności bezprzewodowej.
+Zastosowanie jednego, gotowego modułu --- zamiast zestawu odrębnych podzespołów
+łączonych na płytce prototypowej --- ograniczyło liczbę połączeń
+podatnych na awarie w warunkach eksploatacji w pojeździe (wibracje, wahania
+temperatury) oraz skróciło czas potrzebny na uruchomienie sprzętowej części
+projektu. Rdzeniem modułu jest układ ESP32-S3~\cite{espressif_s3_ds} ---
+dwurdzeniowy mikrokontroler z rdzeniami Xtensa~LX7 taktowanymi do 240~MHz,
+z wbudowaną obsługą Wi-Fi i Bluetooth~LE, uzupełniony o 8~MB pamięci PSRAM
+i 16~MB pamięci Flash, co zapewnia zasoby wystarczające zarówno do
+wykonywania predykcji modelu uczenia maszynowego, jak i obsługi
+rozbudowanego interfejsu graficznego w bibliotece LVGL. Pełną specyfikację
+techniczną modułu zestawiono w tabeli~\ref{tab:specyfikacja-platforma}.
+
+\begin{table}[!h]
+    \centering
+    \caption{Specyfikacja techniczna modułu ESP32-S3-Touch-LCD-4.3B.}
+    \label{tab:specyfikacja-platforma}
+    \begin{tabular}{| p{5.3cm} | p{8.4cm} |} \hline
+        \textbf{Parametr} & \textbf{Wartość} \\ \hline\hline
+        Układ SoC & ESP32-S3, rdzenie Xtensa~LX7 (2$\times$), do~240~MHz \\ \hline
+        Pamięć RAM & 512~kB SRAM + 8~MB PSRAM (Octal) \\ \hline
+        Pamięć nieulotna (Flash) & 16~MB \\ \hline
+        Łączność bezprzewodowa & Wi-Fi 2,4~GHz (802.11~b/g/n), Bluetooth~5.0~LE (niewykorzystywane w~projekcie) \\ \hline
+        Wyświetlacz & IPS 4,3\textquotedbl{}, 800$\times$480~px, 65~tys. kolorów (RGB565), interfejs równoległy RGB \\ \hline
+        Panel dotykowy & pojemnościowy, kontroler GT911 (I2C), do~5 punktów dotyku \\ \hline
+        Interfejs CAN & sprzętowy transceiver + kontroler TWAI (zintegrowany w~SoC) \\ \hline
+        Karta pamięci & microSD, interfejs SPI \\ \hline
+        Zegar czasu rzeczywistego & PCF85063A (I2C), z~podtrzymaniem bateryjnym \\ \hline
+        Dodatkowe interfejsy & RS-485, dodatkowe GPIO (niewykorzystywane w~projekcie) \\ \hline
+        Zasilanie & 7--36~V DC, wbudowany przetwornik napięcia \\ \hline
+    \end{tabular}
+\end{table}
+
+Szczególne znaczenie dla zastosowania w pojeździe ma szeroki zakres
+napięcia zasilania (7--36~V DC), obejmujący zarówno instalację 12~V
+w samochodach osobowych, jak i wahania napięcia towarzyszące rozruchowi
+silnika oraz pracy alternatora, bez konieczności stosowania dodatkowego
+zewnętrznego stabilizatora. Pojemnościowy panel dotykowy obsługiwany przez kontroler GT911 oraz układ RTC
+PCF85063A współdzielą przy tym tę samą magistralę I2C, co upraszcza
+okablowanie modułu. Dobór tego konkretnego modułu potwierdza
+wniosek z podrozdziału~\ref{sec:architektura}: wszystkie wymagania funkcjonalne
+udało się zrealizować w ramach jednej, zwartej platformy sprzętowej, bez
+potrzeby integrowania dodatkowych komponentów zewnętrznych.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.47\linewidth]{modul-esp32s3.jpg}
+    \hfill
+    \includegraphics[width=0.47\linewidth]{modul-esp32s3_tyl.png}
+    \caption{Moduł ESP32-S3-Touch-LCD-4.3B --- widok od strony wyświetlacza (po lewej) oraz od strony złączy (po prawej), ze slotem karty microSD i~terminalem CAN/RS-485. Źródło: \cite{gotronik2026}.}
+    \label{fig:modul-esp32s3}
+\end{figure}
+
+%---------------------------------------------------------------
+\subsection{Podsystem akwizycji danych}
+\label{sec:akwizycja}
+
+Podsystem akwizycji danych odpowiada za nasłuch magistrali CAN, rozpoznanie
+i zdekodowanie przenoszonych przez nią sygnałów pojazdu, nadanie im znacznika
+czasu oraz zapis na karcie SD w formacie wykorzystywanym następnie do
+przygotowania zbioru uczącego. Jest to jedyny element systemu bezpośrednio
+stykający się z magistralą pojazdu, dlatego szczególny nacisk położono na
+bezpieczeństwo odbioru danych oraz odporność na wartości nieprawidłowe.
+
+\subsubsection{Odbiór ramek z magistrali CAN}
+
+Odbiór ramek realizowany jest z użyciem kontrolera TWAI (ang. \emph{Two-Wire
+Automotive Interface}), wbudowanego w układ ESP32-S3 i połączonego ze
+sprzętowym transceiverem CAN modułu (p.~\ref{sec:platforma}). Kontroler
+skonfigurowano w trybie wyłącznie nasłuchującym (\texttt{TWAI\_MODE\_LISTEN\_ONLY}),
+w którym urządzenie odbiera ramki, lecz nie generuje na magistrali potwierdzeń
+ani nie może przy błędzie transmisji wymusić stanu \emph{błędu pasywnego} czy
+wysłać własnych ramek --- zgodnie z wymaganiem, aby rejestrator w żaden sposób
+nie ingerował w komunikację elektroniki pojazdu. Magistralę skonfigurowano do
+pracy z prędkością 50~kbit/s, a filtr sprzętowy ustawiono na akceptację
+wszystkich identyfikatorów --- selekcja
+istotnych ramek odbywa się programowo, na etapie parsowania. Odbiór działa
+w trybie nieblokującym: w każdym przebiegu głównej pętli programu sprawdzany
+jest zestaw alertów kontrolera (nowe dane, błąd magistrali, przepełnienie
+kolejki odbiorczej), a w przypadku sygnalizacji nowych danych z kolejki
+odbiorczej opróżniane są wszystkie oczekujące ramki, co zapobiega narastaniu
+zaległości przy chwilowym wzroście natężenia ruchu na magistrali.
+
+\subsubsection{Identyfikacja i parsowanie sygnałów pojazdu}
+
+Poszczególne sygnały pojazdu rozpoznawane są na podstawie 32-bitowego
+identyfikatora ramki, a następnie dekodowane zgodnie z układem bajtów danych
+właściwym dla danego identyfikatora. Zestawienie rozpoznawanych sygnałów, ich
+identyfikatorów oraz sposobu skalowania wartości surowych przedstawia
+tabela~\ref{tab:sygnaly-can} --- kolumna ostatnia wskazuje jednocześnie nazwę
+kolumny, pod jaką dany sygnał trafia do pliku CSV opisanego
+w podrozdziale~\ref{sec:zapis-danych}. Każdy sygnał poddawany jest walidacji:
+producent pojazdu koduje brak wiarygodnej wartości (np. z powodu chwilowej
+awarii czujnika) rezerwując dla niej wartość maksymalną możliwą do zapisania
+na danej liczbie bitów (np. \texttt{0xFF} dla pola 8-bitowego,
+\texttt{0xFFFF} dla pola 16-bitowego); taka wartość jest odrzucana, a pole
+zachowuje swoją ostatnią poprawną wartość.
+
+\begin{table}[!h]
+    \centering
+    \caption{Sygnały pozyskiwane z magistrali CAN i ich odwzorowanie w~pliku CSV.}
+    \label{tab:sygnaly-can}
+    \begin{tabular}{| p{3.9cm} | p{2.5cm} | p{3.9cm} | p{2.2cm} |} \hline
+        \textbf{Sygnał} & \textbf{ID ramki} & \textbf{Zakres / skalowanie} & \textbf{Kolumna CSV} \\ \hline\hline
+        Stan zapłonu & \texttt{0x06214000} & 0~/~1 & \texttt{ignition} \\ \hline
+        Prędkość pojazdu & \texttt{0x04394000} & 0--255~km/h & \texttt{speed} \\ \hline
+        Obroty silnika & \texttt{0x04214001} & 0--8191~obr/min & \texttt{rpm} \\ \hline
+        Pedał przyspieszenia & \texttt{0x04394100} & 0--255 & \texttt{throttle} \\ \hline
+        Pedał hamulca & \texttt{0x03029000} & 0--1023 & \texttt{brake} \\ \hline
+        Poziom paliwa & \texttt{0x06214000} & 0--100~\% & \texttt{fuel\_level} \\ \hline
+        Zużycie paliwa (licznik) & \texttt{0x04214001} & mL, krok 30,51~nL/bit & \texttt{fuel\_cons} \\ \hline
+        Przebieg całkowity & \texttt{0x0C014003} & 20~bitów (0--1\,048\,575~km) & \texttt{distance} \\ \hline
+        Zasięg & \texttt{0x0C014003} & 15~bitów (0--32\,767~km) & \texttt{range} \\ \hline
+        Temperatura oleju & \texttt{0x04214001} & $-40$ -- $+127\,^{\circ}$C & \texttt{oil\_temp} \\ \hline
+        Status ESP & \texttt{0x06314000} & 0=normalny, 2=sport, 3=trakcja & \texttt{esp} \\ \hline
+        Bieg wsteczny & \texttt{0x04214001} & 0~/~1 & \texttt{rear\_gear} \\ \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Znakowanie czasem i zapis danych}
+\label{sec:zapis-danych}
+
+Każdy rekord zapisywany na karcie SD opatrywany jest znacznikiem czasu
+pochodzącym z układu RTC PCF85063A, odczytywanego po magistrali I2C. Po
+uruchomieniu urządzenia zegar systemowy synchronizowany jest ze wskazaniem
+układu RTC; jeśli odczyt jest nieprawidłowy (np. przy pierwszym uruchomieniu,
+przed ustawieniem zegara), system sięga po ostatni znany znacznik czasu
+zapisany w pamięci NVS. Wskazania RTC mogą być dodatkowo aktualizowane przez
+sieć bezprzewodową przy użyciu protokołu NTP, z wykorzystaniem serwera czasu
+Głównego Urzędu Miar (\texttt{tempus1.gum.gov.pl}). Nazwa pliku nagrania
+generowana jest automatycznie na podstawie wskazań zegara w formacie
+\texttt{RRRRMMDD\_GGMMSS} (np. \texttt{20260404\_091932.csv}), a w przypadku
+niedostępności poprawnego czasu --- na podstawie czasu pracy urządzenia od
+uruchomienia.
+
+Zapis do pliku CSV odbywa się ze stałą częstotliwością 10~Hz (zadanie
+rejestrujące budzone jest co 100~ms), zgodną z częstotliwością próbkowania
+zakładaną w notebookach przygotowujących dane uczące
+(podrozdział~\ref{sec:dane}). To samo zadanie, korzystając z tego samego
+100-milisekundowego odczytu stanu pojazdu, zasila jednocześnie moduł predykcji
+modelu uczenia maszynowego (podrozdział~\ref{sec:implementacja}), dzięki czemu
+dane wykorzystywane do treningu i dane obserwowane w czasie rzeczywistym przez
+model pochodzą z tego samego, spójnego strumienia próbkowania. Nagrywanie
+domyślnie rozpoczyna się i kończy automatycznie wraz ze zboczem sygnału
+zapłonu (narastającym i opadającym), a zapisywane są wyłącznie rekordy przy
+włączonym zapłonie; dostępny jest również tryb ręcznego sterowania
+nagrywaniem, nadrzędny wobec logiki automatycznej, wykorzystywany m.in. przy
+testach systemu poza typowym cyklem jazdy.
+
+\subsubsection{Niezawodność i zarządzanie energią}
+
+Praca urządzenia w pojeździe wymaga odporności na utratę zasilania (np. przy
+odłączeniu akumulatora) oraz ograniczenia poboru energii w czasie, gdy pojazd
+stoi z wyłączonym silnikiem. Parametry wymagające trwałości między
+uruchomieniami --- narastający licznik zużycia paliwa, znacznik czasu RTC,
+liczba drzewek zebranych w sadzie (podrozdział~\ref{sec:implementacja}) oraz
+liczniki oszczędności --- przechowywane są w nieulotnej pamięci NVS. Licznik
+zużycia paliwa zapisywany jest przy każdym zboczu opadającym sygnału zapłonu
+i odtwarzany przy jego załączeniu, dzięki czemu jego wartość przetrwa zarówno
+zanik zasilania, jak i przejście urządzenia w stan uśpienia.
+
+Ograniczenie poboru energii realizowane jest przez przejście w stan
+głębokiego uśpienia po 20 sekundach braku jakiejkolwiek aktywności na
+magistrali CAN --- warunku, który w praktyce odpowiada wyłączonemu silnikowi.
+Mechanizm ten jest wstrzymywany, jeśli użytkownik ręcznie steruje
+podświetleniem ekranu (np. przeglądając zarejestrowane statystyki poza jazdą).
+Przed przejściem w stan uśpienia urządzenie zapisuje do pamięci NVS bieżący
+znacznik czasu oraz liczniki statystyk, a następnie wyłącza podświetlenie
+wyświetlacza. Wybudzenie następuje sprzętowo, poprzez mechanizm EXT0,
+skonfigurowany na wykrycie stanu niskiego na linii RX kontrolera CAN --- stan
+ten odpowiada bitowi dominującemu magistrali, a więc dowolna transmisja
+wznowiona na magistrali (np. po ponownym uruchomieniu silnika) budzi
+urządzenie. Cykl ten przedstawiono na rysunku~\ref{fig:cykl-snu}.
+
+\begin{figure}[!h]
+    \centering
+    \resizebox{0.8\linewidth}{!}{\input{tex/fig/cykl-snu.tikz}}
+    \caption{Cykl przejść między pracą aktywną a głębokim uśpieniem, sterowany aktywnością na magistrali CAN.}
+    \label{fig:cykl-snu}
+\end{figure}
+
+%---------------------------------------------------------------
+\subsection{Zbiór danych i jego przygotowanie}
+\label{sec:dane}
+
+Zbiór danych wykorzystany do treningu modeli klasyfikacji stylu jazdy
+powstał z 45 przejazdów zarejestrowanych podsystemem akwizycji opisanym
+w podrozdziale~\ref{sec:akwizycja}, w rzeczywistych warunkach ruchu
+drogowego. Surowe nagrania CSV nie nadają się bezpośrednio do treningu ---
+wymagają ujednolicenia siatki czasowej, odrzucenia fragmentów nieistotnych
+dla oceny stylu jazdy oraz przekształcenia w cechy opisujące zachowanie
+kierowcy w kolejnych przedziałach czasu. Proces ten, przeprowadzany
+w notebooku \texttt{ML\_driving\_style.ipynb}, opisano w kolejnych punktach.
+
+\subsubsection{Czyszczenie danych i resampling}
+
+Każdy plik wczytywany jest niezależnie, po czym wiersze o brakujących
+wartościach w kolumnach kluczowych są odrzucane, a rekordy porządkowane
+i deduplikowane względem znacznika czasu. Ponieważ magistrala CAN jest
+zdarzeniowa --- poszczególne sygnały nadawane są z różną częstotliwością,
+a wartość utrzymuje się do nadejścia kolejnej ramki --- dane sprowadzane są
+do stałej siatki czasowej 10~Hz (krok 100~ms) metodą \emph{forward-fill}:
+brakujące próbki na siatce wypełniane są ostatnią znaną wartością sygnału.
+Tej samej metody używa się dla narastającego licznika zużycia paliwa
+(\texttt{fuel\_cons}), który z natury zmienia się w sposób skokowy.
+
+Po sprowadzeniu do wspólnej siatki dane filtrowane są zgodnie z regułami
+odpowiadającymi tym stosowanym przez model bezpośrednio na urządzeniu
+(podrozdział~\ref{sec:implementacja}): pozostawiane są wyłącznie próbki przy
+włączonym zapłonie, poza biegiem wstecznym i z nieujemną wartością prędkości.
+Na tak przygotowanym przebiegu wyznaczane są wielkości pochodne: przyspieszenie
+(z różnicy kolejnych próbek prędkości), szarpnięcie (pochodna przyspieszenia)
+oraz pochodne położenia pedałów gazu i hamulca. Przerwa w sekwencji dłuższa
+niż 150~ms --- odpowiadająca wyłączeniu silnika lub włączeniu biegu
+wstecznego i odfiltrowaniu odpowiadających jej próbek --- traktowana jest jako
+granica segmentu, na której wartości pochodnych są zerowane, aby pojedynczy
+skok danych między niepowiązanymi fragmentami jazdy nie został błędnie
+zinterpretowany jako gwałtowne zdarzenie kinematyczne.
+
+Po zastosowaniu opisanych kroków 45 zarejestrowanych przejazdów dało łącznie
+680\,445 próbek na siatce 10~Hz, co odpowiada około 18,9~godzinom jazdy
+wykorzystanym w dalszym przetwarzaniu.
+
+\subsubsection{Okna czasowe i ekstrakcja cech}
+
+Zamiast klasyfikować pojedyncze próbki, styl jazdy oceniany jest dla
+przesuwnych okien czasowych o długości 5~s (50 próbek przy 10~Hz), przesuwanych
+co 2,5~s (50\% nakładania kolejnych okien) --- ten sam schemat okna
+zaimplementowano bezpośrednio w oprogramowaniu urządzenia
+(podrozdział~\ref{sec:implementacja}). Okna, dla których średnia prędkość
+w oknie nie przekracza 2~km/h, są pomijane na etapie przygotowania danych ---
+odpowiadający im przypadek postoju obsługiwany jest bezpośrednio w
+oprogramowaniu mikrokontrolera bez udziału modelu. Dla każdego pozostałego
+okna wyznaczany jest wektor 20 cech statystycznych, zestawionych w
+tabeli~\ref{tab:cechy}, opisujących rozkład prędkości, obrotów silnika,
+położenia pedałów, przyspieszenia i szarpnięcia w obrębie okna.
+
+\begin{table}[!h]
+    \centering
+    \caption{Zestaw cech statystycznych wyznaczanych dla każdego okna czasowego.}
+    \label{tab:cechy}
+    \begin{tabular}{| c | p{3.3cm} | p{7.2cm} | p{1.7cm} |} \hline
+        \textbf{Lp.} & \textbf{Cecha} & \textbf{Opis} & \textbf{Jednostka} \\ \hline\hline
+        1  & \texttt{speed\_mean}    & średnia prędkość w oknie & km/h \\ \hline
+        2  & \texttt{speed\_std}     & odchylenie standardowe prędkości & km/h \\ \hline
+        3  & \texttt{speed\_p95}     & 95. percentyl prędkości & km/h \\ \hline
+        4  & \texttt{rpm\_mean}      & średnie obroty silnika & obr/min \\ \hline
+        5  & \texttt{rpm\_std}       & odchylenie standardowe obrotów & obr/min \\ \hline
+        6  & \texttt{rpm\_p95}       & 95. percentyl obrotów & obr/min \\ \hline
+        7  & \texttt{throttle\_mean} & średnie położenie pedału gazu & --- \\ \hline
+        8  & \texttt{throttle\_std}  & odchylenie standardowe pedału gazu & --- \\ \hline
+        9  & \texttt{throttle\_p95}  & 95. percentyl pedału gazu & --- \\ \hline
+        10 & \texttt{throttle\_dp95} & 95. percentyl pochodnej pedału gazu & raw/s \\ \hline
+        11 & \texttt{brake\_mean}    & średnie położenie pedału hamulca & --- \\ \hline
+        12 & \texttt{brake\_p95}     & 95. percentyl pedału hamulca & --- \\ \hline
+        13 & \texttt{brake\_dp95}    & 95. percentyl pochodnej pedału hamulca & raw/s \\ \hline
+        14 & \texttt{a\_mean}        & średnie przyspieszenie (ze znakiem) & m/s$^2$ \\ \hline
+        15 & \texttt{a\_std}         & odchylenie standardowe przyspieszenia & m/s$^2$ \\ \hline
+        16 & \texttt{a\_p95}         & 95. percentyl przyspieszenia & m/s$^2$ \\ \hline
+        17 & \texttt{a\_p05}         & 5. percentyl przyspieszenia (hamowanie) & m/s$^2$ \\ \hline
+        18 & \texttt{abs\_a\_mean}   & średnia wartość bezwzględna przyspieszenia & m/s$^2$ \\ \hline
+        19 & \texttt{jerk\_abs\_mean}& średnia wartość bezwzględna szarpnięcia & m/s$^3$ \\ \hline
+        20 & \texttt{jerk\_abs\_p95} & 95. percentyl wartości bezwzględnej szarpnięcia & m/s$^3$ \\ \hline
+    \end{tabular}
+\end{table}
+
+Rozróżnienie cech \texttt{a\_mean} i \texttt{abs\_a\_mean} jest przy tym
+istotne: przyspieszenie ze znakiem uśrednia się w typowym oknie w pobliżu
+zera (fazy przyspieszania i hamowania częściowo się znoszą), podczas gdy jego
+wartość bezwzględna pozwala odróżnić jazdę dynamiczną od spokojnej niezależnie
+od tego, czy przeważały w niej przyspieszenia, czy hamowania. Dla porównania
+zastosowano dwa warianty modelu wykorzystujące dokładnie ten sam zestaw
+i kolejność cech (podrozdział~\ref{sec:trening}), co pozwoliło ograniczyć
+różnice między nimi wyłącznie do algorytmu uczącego.
+
+Zastosowanie okien czasowych zamiast pojedynczych próbek z 45 przejazdów dało
+łącznie 24\,941 okien.
+
+\subsubsection{Etykietowanie danych}
+
+Ponieważ zbiór nie zawiera etykiet nadanych ręcznie, styl jazdy każdego okna
+wyznaczany jest regułami decyzyjnymi opartymi na dwóch niezależnych źródłach
+informacji: zdarzeniach kinematycznych (do rozpoznania jazdy agresywnej) oraz
+rzeczywistym zużyciu paliwa odczytanym z narastającego licznika na magistrali
+CAN (do rozróżnienia jazdy ekonomicznej od neutralnej). Reguły sprawdzane są
+w ustalonej kolejności --- pierwsza spełniona reguła nadaje etykietę oknu.
+
+Okno klasyfikowane jest jako \emph{agresywne}, jeśli spełniony jest
+którykolwiek z warunków: ostre hamowanie (5. percentyl przyspieszenia poniżej
+$-5{,}8$~m/s$^2$), utrzymana silna dynamika jazdy (średnia wartość bezwzględna
+przyspieszenia powyżej $1{,}30$~m/s$^2$), gwałtowne wciśnięcie pedału gazu
+(95. percentyl jego pochodnej powyżej 140), mocne wciśnięcie pedału hamulca
+(95. percentyl powyżej 180) lub przekroczenie prędkości 120~km/h. Progi te
+dobrano w okolicach 95. percentyla rozkładu odpowiednich cech, tak aby
+kwalifikowały wyłącznie zdarzenia rzeczywiście gwałtowne, nie zaś umiarkowaną
+dynamikę jazdy.
+
+Pozostałe okna --- niespełniające żadnego z warunków agresywnej jazdy ---
+klasyfikowane są na podstawie rzeczywistego zużycia paliwa w przeliczeniu na
+100~km (\texttt{l\_per\_100km}), wyznaczanego z różnicy wskazań licznika
+paliwa oraz przejechanego dystansu w oknie; wielkość ta służy wyłącznie do
+nadania etykiety i nie wchodzi w skład wektora cech modelu. Ponieważ zużycie
+paliwa silnie zależy od zakresu prędkości, progi klasyfikacji eco/normal
+wyznaczono osobno dla trzech zakresów (tabela~\ref{tab:progi-paliwo}): jako
+25. percentyl (\emph{eco}) i medianę (\emph{normal}) rozkładu
+\texttt{l\_per\_100km} w oknach z wiarygodnym odczytem paliwa. Okna
+o zużyciu pomiędzy tymi progami stanowią pas marginesu i są odrzucane ze
+zbioru uczącego jako niejednoznaczne --- w cechach kinematycznych przypominają
+jazdę ekonomiczną, mimo wyższego rzeczywistego zużycia paliwa.
+
+\begin{table}[!h]
+    \centering
+    \caption{Progi zużycia paliwa (L/100km) użyte do etykietowania klas eco/normal, wyznaczone z~danych.}
+    \label{tab:progi-paliwo}
+    \begin{tabular}{| l | c | c | c |} \hline
+        \textbf{Zakres prędkości} & \textbf{eco (< p25)} & \textbf{margines (odrzucany)} & \textbf{normal (> p50)} \\ \hline\hline
+        miasto (< 50~km/h)      & < 2,96 & 2,96--5,89 & > 5,89 \\ \hline
+        trasa (50--90~km/h)     & < 3,28 & 3,28--5,30 & > 5,30 \\ \hline
+        autostrada (> 90~km/h)  & < 5,93 & 5,93--7,99 & > 7,99 \\ \hline
+    \end{tabular}
+\end{table}
+
+Zestawienie liczbowe całego procesu przygotowania danych zawiera
+tabela~\ref{tab:podsumowanie-danych}. Ostateczny zbiór uczący objął 21\,725 okien pochodzących z 45 przejazdów.
+Klasy rozłożone są nierównomiernie ---
+z przewagą jazdy neutralnej i agresywnej nad ekonomiczną --- co uwzględniono
+przy podziale na zbiór treningowy i testowy (podrozdział~\ref{sec:trening}).
+
+\begin{table}[!h]
+    \centering
+    \caption{Podsumowanie liczbowe zbioru danych po przygotowaniu.}
+    \label{tab:podsumowanie-danych}
+    \begin{tabular}{| p{7cm} | r |} \hline
+        \textbf{Wielkość} & \textbf{Wartość} \\ \hline\hline
+        Liczba zarejestrowanych przejazdów (plików CSV) & 45 \\ \hline
+        Liczba próbek po czyszczeniu i resamplingu (10~Hz) & 680\,445 \\ \hline
+        Łączny czas jazdy w zbiorze & ok. 18,9~h \\ \hline
+        Liczba wyznaczonych okien czasowych (5~s, krok 2,5~s) & 24\,941 \\ \hline
+        Okna z wiarygodnym odczytem zużycia paliwa & 77,6\% \\ \hline
+        Okna odrzucone jako margines eco/normal & 3\,216 \\ \hline
+        Okna w ostatecznym zbiorze uczącym & 21\,725 \\ \hline
+        Liczba plików reprezentowanych w zbiorze uczącym & 42 z~45 \\ \hline
+        Udział klasy \emph{normal} / \emph{aggressive} / \emph{eco} & 44,5\% / 38,4\% / 17,1\% \\ \hline
+    \end{tabular}
+\end{table}
+
+%---------------------------------------------------------------
+\subsection{Trening i wybór modelu uczenia maszynowego}
+\label{sec:trening}
+
+% TODO: 1-2 zdania wprowadzające (kryteria: dokładność + ograniczenia
+% platformy wbudowanej: pamięć, czas predykcji).
+
+\subsubsection{Wybór klasy algorytmów}
+% TODO: przegląd algorytmów pod kątem urządzeń wbudowanych, uzasadnienie
+% wyboru zespołów drzew decyzyjnych (ExtraTrees, RandomForest); ograniczenia
+% hiperparametrów pod ESP32 (60 drzew, głębokość 7).
+
+\subsubsection{Trening i walidacja modeli}
+% TODO: podział zbioru GroupShuffleSplit/GroupKFold grupowany po przejazdach,
+% porównanie ExtraTrees vs RandomForest, macierze pomyłek, analiza błędnych
+% klasyfikacji i ważności cech; wybór modelu docelowego (RandomForest).
+
+\subsubsection{Eksport modelu do kodu C}
+% TODO: narzędzie emlearn (statyczny kod C), kwantyzacja cech do int16
+% (parametry MinMaxScaler w JSON -> generowany nagłówek feature_params.h),
+% rozważane alternatywy (ONNX, TensorFlow Lite).
+
+%---------------------------------------------------------------
+\subsection{Implementacja systemu na platformie docelowej}
+\label{sec:implementacja}
+
+% TODO: 1-2 zdania wprowadzające (struktura oprogramowania: moduły, taski
+% FreeRTOS, pętla główna).
+
+\subsubsection{Struktura oprogramowania}
+% TODO: podział na moduły (can, sd_card, ai_model, eco_stats, rtc_manager,
+% wifi_manager, ui), zadania FreeRTOS i synchronizacja (mutex LVGL),
+% wspólny task próbkujący 10 Hz karmiący logger i model.
+
+\subsubsection{Inferencja w czasie rzeczywistym}
+% TODO: bufor cykliczny 50 próbek (5 s @ 10 Hz), obliczanie cech w C
+% zgodne 1:1 z notebookiem (percentyle, std populacyjne), kwantyzacja,
+% predykcja, filtry lustrzane do treningu (zapłon, bieg wsteczny, postój);
+% wskaźnik punktowy 0-1000 z asymetrią (eco +2, aggressive -4, loss aversion).
+
+\subsubsection{Moduł statystyk oszczędności}
+% TODO: samokalibrujący się baseline l/100km per styl jazdy, kontrfaktyczne
+% wyliczanie oszczędności paliwa i kosztów eksploatacyjnych (ostre hamowania,
+% gwałtowne przyspieszenia, czas na wysokich obrotach), emisja CO2,
+% persystencja liczników w NVS.
+
+%---------------------------------------------------------------
+\subsection{Interfejs użytkownika}
+\label{sec:ui}
+
+% TODO: 1-2 zdania wprowadzające (cel: czytelność, brak rozpraszania,
+% motywacja zamiast ostrzeżeń).
+
+\subsubsection{Biblioteka graficzna i narzędzia}
+% TODO: LVGL + EEZ Studio, port RGB LCD z dotykiem GT911, organizacja
+% ekranów (pager), wydajność renderowania (PSRAM, framebuffer).
+
+\subsubsection{Mechanizmy nudgingu i gamifikacji}
+% TODO: eko-drzewko (7 stadiów wzrostu, usychanie przy agresji, sad zebranych
+% drzew), poświata krawędzi ekranu w kolorze stylu jazdy, licznik oszczędności
+% z animacją monety; uzasadnienie psychologiczne (nudging, loss aversion,
+% wzmocnienie pozytywne).
+
+\subsubsection{Ekrany systemu}
+% TODO: ekran danych bieżących (CAN), ekran eko-drzewka i sadu, ekran
+% statystyk oszczędności, ustawienia (cena paliwa, jasność, nagrywanie,
+% reset); zrzuty ekranu.

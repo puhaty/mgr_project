@@ -13,6 +13,10 @@
 \graphicspath{{tex/img/}} % Katalog z obrazkami.
 \addbibresource{bibliografia.bib} % Plik .bib z bibliografią
 
+% Schematy i diagramy rysowane bezpośrednio w LaTeX-u (źródła w tex/fig/).
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, backgrounds, calc, fit, positioning}
+
 %-------------------------------------------------------------
 % Wybór wydziału:
 %  \facultyeiti: Wydział Elektroniki i Technik Informacyjnych
@@ -183,9 +187,26 @@ ekonomicznych, ekologicznych oraz w zakresie bezpieczeństwa.
 % Makro \acronym dodaje skrót/symbol do listy,
 % zapewniając podstawowe formatowanie.
 \acronymlist
+\acronym{CAN}{ang. \emph{Controller Area Network} (magistrala komunikacyjna stosowana w pojazdach)}
+\acronym{CSV}{ang. \emph{Comma-Separated Values} (tekstowy format zapisu danych tabelarycznych)}
+\acronym{ECU}{ang. \emph{Electronic Control Unit} (elektroniczna jednostka sterująca pojazdu)}
 \acronym{EiTI}{Wydział Elektroniki i Technik Informacyjnych}
+\acronym{GPIO}{ang. \emph{General Purpose Input/Output} (uniwersalny wyprowadzony pin wejścia/wyjścia)}
+\acronym{I2C}{ang. \emph{Inter-Integrated Circuit} (szeregowa magistrala komunikacyjna)}
+\acronym{IPS}{ang. \emph{In-Plane Switching} (technologia matrycy wyświetlacza)}
+\acronym{LVGL}{ang. \emph{Light and Versatile Graphics Library} (biblioteka graficzna dla systemów wbudowanych)}
+\acronym{NTP}{ang. \emph{Network Time Protocol} (protokół synchronizacji czasu)}
+\acronym{NVS}{ang. \emph{Non-Volatile Storage} (nieulotna pamięć danych konfiguracyjnych)}
+\acronym{PC}{ang. \emph{Personal Computer} (komputer osobisty)}
+\acronym{PSRAM}{ang. \emph{Pseudo Static Random Access Memory} (pamięć operacyjna typu pseudostatycznego)}
 \acronym{PW}{Politechnika Warszawska}
-\acronym{WEIRD}{ang. \emph{Western, Educated, Industrialized, Rich and Democratic}}
+\acronym{RAM}{ang. \emph{Random Access Memory} (pamięć o~dostępie swobodnym)}
+\acronym{ROM}{ang. \emph{Read-Only Memory} (pamięć tylko do odczytu)}
+\acronym{RTC}{ang. \emph{Real-Time Clock} (układ zegara czasu rzeczywistego)}
+\acronym{SD}{ang. \emph{Secure Digital} (standard kart pamięci)}
+\acronym{SoC}{ang. \emph{System on Chip} (układ scalony integrujący cały system komputerowy)}
+\acronym{SPI}{ang. \emph{Serial Peripheral Interface} (szeregowa magistrala komunikacyjna)}
+\acronym{TWAI}{ang. \emph{Two-Wire Automotive Interface} (kontroler magistrali CAN w~układach ESP32)}
 \vspace{0.8cm}
 
 %--------------------------------------
@@ -196,40 +217,11 @@ ekonomicznych, ekologicznych oraz w zakresie bezpieczeństwa.
 \listoffigurestoc    % Spis rysunków.
 \vspace{1cm}         % vertical space
 \listoftablestoc     % Spis tabel.
-\vspace{1cm}         % vertical space
-\listofappendicestoc % Spis załączników
-
-%-------------
-% Załączniki
-%-------------
 
 % Obrazki i tabele w załącznikach nie trafiają do spisów
 \captionsetup[figure]{list=no}
 \captionsetup[table]{list=no}
 
-% Załącznik 1
-\clearpage
-\appendix{Nazwa załącznika 1}
-\lipsum[1-3]
-% \begin{figure}[!h]
-% 	\centering \includegraphics[width=0.5\linewidth]{logopw2.png}
-% 	\caption{Obrazek w załączniku.}
-% \end{figure}
-\lipsum[4-7]
-
-% Załącznik 2
-\clearpage
-\appendix{Nazwa załącznika 2}
-\lipsum[1-2]
-\begin{table}[!h] \centering
-    \caption{Tabela w załączniku.}
-    \begin{tabular} {| c | c | r |} \hline
-        Kolumna 1       & Kolumna 2 & Liczba \\ \hline\hline
-        cell1           & cell2     & 60     \\ \hline
-        \multicolumn{2}{|r|}{Suma:} & 123,45 \\ \hline
-    \end{tabular}
-\end{table}
-\lipsum[3-4]
 
 % Używając powyższych spisów jako szablonu,
 % możesz dodać również swój własny wykaz,

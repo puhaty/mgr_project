@@ -1,0 +1,138 @@
+% Schemat blokowy architektury systemu — edytowalny rysunek TikZ.
+% Kolorystyka koduje domeny i role: POJAZD/URZĄDZENIE/ŚRODOWISKO TRENINGOWE
+% (kolor ramki i "zakładki" domeny) oraz etapy przetwarzania w~urządzeniu
+% (niebieski = akwizycja, fiolet = ekstrakcja cech/predykcja modelu,
+% zielony = wynik dla kierowcy, bursztynowy = trwałe składowanie,
+% szary = moduły pomocnicze). Siatka: kolumny x = 0, 3.9, 7.8, 11.7;
+% wiersze y = 0, -2.2, -4.4, -6.0; środowisko treningowe y = -8.8.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    >=Stealth
+]
+    % ---- Paleta kolorów ---------------------------------------------------
+    \definecolor{cVehicle}{HTML}{64748B} % POJAZD — łupkowy szary
+    \definecolor{cDevice}{HTML}{2563EB}  % akwizycja / główny przepływ — niebieski
+    \definecolor{cML}{HTML}{7C3AED}      % cechy i predykcja modelu — fiolet
+    \definecolor{cUI}{HTML}{059669}      % wynik dla kierowcy — zieleń
+    \definecolor{cStore}{HTML}{B45309}   % trwałe składowanie — bursztyn
+    \definecolor{cAux}{HTML}{475569}     % moduły pomocnicze — ciemny szary
+    \definecolor{cTrain}{HTML}{C2410C}   % ŚRODOWISKO TRENINGOWE — spalona pomarańcz
+
+    % Cień: prosta, niezawodna technika bez zewnętrznej biblioteki —
+    % przesunięta ciemna kopia kształtu rysowana przed właściwym węzłem.
+    \tikzset{
+        myshadow/.style={preaction={fill=black!45, opacity=0.30,
+                          transform canvas={xshift=0.5mm, yshift=-0.5mm}}}
+    }
+
+    \tikzset{
+        block/.style={draw=cDevice, line width=0.8pt, rounded corners=4pt,
+                      align=center, fill=white, text width=2.75cm,
+                      minimum height=10mm, inner sep=3pt, myshadow},
+        hero/.style={line width=1.2pt},
+        wide/.style ={draw=cTrain, line width=0.8pt, rounded corners=4pt,
+                      align=center, fill=white, minimum height=10mm,
+                      inner sep=4pt, myshadow},
+        store/.style={draw=cStore, line width=0.8pt, rounded corners=4pt,
+                      align=center, fill=cStore!8, text width=2.75cm,
+                      minimum height=10mm, inner sep=3pt, myshadow},
+        aux/.style  ={draw=cAux, line width=0.6pt, rounded corners=3pt,
+                      align=center, fill=cAux!6, font=\scriptsize,
+                      text width=2.75cm, minimum height=7mm, inner sep=2pt},
+        cont/.style ={draw=cAux, line width=0.7pt, rounded corners=6pt,
+                      fill=cAux!4, inner sep=10pt},
+        tab/.style  ={fill=cAux, text=white, font=\bfseries\footnotesize,
+                      rounded corners=2pt, inner sep=4pt, anchor=south west},
+        arr/.style  ={-{Stealth[length=2.6mm]}, line width=0.9pt,
+                      rounded corners=3pt},
+        dev/.style  ={-{Stealth[length=2.6mm]}, line width=0.9pt,
+                      rounded corners=3pt, densely dashed}
+    }
+
+    % ---- Pojazd ----------------------------------------------------------
+    \node[block, draw=cVehicle] (ecu) at (0,3.8)   {jednostki sterujące (ECU)};
+    \node[block, draw=cVehicle] (can) at (3.9,3.8) {magistrala CAN};
+
+    % ---- Urządzenie: wiersz 1 (akwizycja) --------------------------------
+    \node[block] (parser)  at (0,0)     {parser i walidacja ramek};
+    \node[block] (stan)    at (5.85,0)  {bieżący stan pojazdu};
+    \node[block] (sampler) at (11.7,0)  {próbkowanie 10~Hz};
+
+    % ---- wiersz 2: rejestracja + ścieżka ML -------------------------------
+    \node[block]             (rej)   at (0,-2.2)    {rejestrator (pliki CSV)};
+    \node[block, draw=cML]   (okno)  at (11.7,-2.2) {okno 5~s (50~próbek)};
+    \node[block, draw=cML]   (cechy) at (7.8,-2.2)  {ekstrakcja 20~cech};
+    \node[block, draw=cML]   (kwant) at (3.9,-2.2)  {kwantyzacja (int16)};
+
+    % ---- wiersz 3: klasyfikacja i prezentacja ------------------------------
+    \node[store]                              (karta) at (0,-4.4)    {karta SD};
+    \node[block, hero, draw=cML,  fill=cML!12]  (model) at (3.9,-4.4)  {model drzewiasty\\(klasyfikator)};
+    \node[block, draw=cUI]                    (score) at (7.8,-4.4)  {punktacja i~grywalizacja};
+    \node[block, hero, draw=cUI,  fill=cUI!14] (ui)    at (11.7,-4.4) {interfejs graficzny\\(LVGL)};
+
+    % ---- moduły pomocnicze ------------------------------------------------
+    \node[aux] (rtc) at (3.9,-6.0)  {RTC / NTP};
+    \node[aux] (nvs) at (7.8,-6.0)  {NVS};
+    \node[aux] (pwr) at (11.7,-6.0) {zarządzanie energią};
+
+    % ---- środowisko treningowe ---------------------------------------------
+    \node[wide, text width=4.8cm] (pc) at (1.6,-8.8)
+        {komputer PC:\\przygotowanie danych,\\trening i~walidacja modeli};
+    \node[wide, text width=3.4cm] (eksport) at (8.4,-8.8)
+        {eksport emlearn\\(nagłówki~C)};
+
+    % ---- kontenery domen ----------------------------------------------------
+    \begin{scope}[on background layer]
+        \node[cont, draw=cVehicle, fill=cVehicle!5] (vehicle) [fit=(ecu)(can)] {};
+        \node[cont] (device) [fit=(parser)(sampler)(rej)(okno)(karta)(ui)(rtc)(nvs)(pwr)] {};
+        \node[cont, draw=cTrain, fill=cTrain!5, densely dashed] (train) [fit=(pc)(eksport)] {};
+    \end{scope}
+    \node[tab, fill=cVehicle] at (vehicle.north west) [xshift=6pt] {POJAZD};
+    \node[tab, fill=cAux]     at (device.north west)  [xshift=6pt] {URZĄDZENIE POKŁADOWE (ESP32-S3)};
+    \node[tab, fill=cTrain]   at (train.north west)   [xshift=6pt] {ŚRODOWISKO TRENINGOWE (offline)};
+
+    % ---- przepływ danych: pojazd -> akwizycja ------------------------------
+    \draw[arr, cVehicle] (ecu) -- (can);
+    \coordinate (v1) at ($(can.south)+(0,-1.1)$);
+    \draw[arr, cDevice] (can.south) -- (v1) -- (v1 -| parser.north)
+        node[midway, above, font=\scriptsize] {ramki CAN (tylko nasłuch)}
+        -- (parser.north);
+
+    % ---- akwizycja i rejestracja -------------------------------------------
+    \draw[arr, cDevice] (parser) -- (stan);
+    \draw[arr, cDevice] (stan) -- (sampler);
+    \draw[arr, cDevice] (sampler) -- (okno);
+    \draw[arr, cDevice] ($(sampler.south)+(0,-0.65)$) -| (rej.north);
+    \draw[arr, cStore]  (rej) -- (karta);
+
+    % ---- ścieżka ML: cechy -> predykcja ------------------------------------
+    \draw[arr, cML] (okno) -- (cechy);
+    \draw[arr, cML] (cechy) -- (kwant);
+    \draw[arr, cML] (kwant) -- (model);
+
+    % ---- wynik dla kierowcy -------------------------------------------------
+    \draw[arr, cUI] (model) -- (score);
+    \draw[arr, cUI] (score) -- (ui);
+
+    % ---- pętla rozwoju modelu (offline) --------------------------------------
+    \draw[dev, cTrain] (karta.south) -- (karta.south |- pc.north)
+        node[midway, right, font=\scriptsize] {nagrania przejazdów};
+    \draw[arr, cTrain] (pc) -- (eksport);
+    \coordinate (rx) at ($(device.east)+(0.7,0)$);
+    \draw[dev, cTrain] (eksport.east) -- (eksport.east -| rx)
+        -- (rx) node[midway, rotate=90, above, font=\scriptsize] {wbudowanie modelu (kompilacja)}
+        -- (device.east);
+
+    % ---- legenda ------------------------------------------------------------
+    \begin{scope}[yshift=-11.3cm, font=\scriptsize]
+        \def\legenditem#1#2#3#4#5{%
+            \draw[line width=1.4pt, #1, #5] (#2,#3) -- ++(0.6,0);
+            \node[anchor=west, text=black] at ($(#2,#3)+(0.75,0)$) {#4};
+        }
+        \legenditem{cDevice}{0}{0}   {akwizycja i przepływ danych}{solid}
+        \legenditem{cML}{4.7}{0}     {cechy i predykcja modelu}{solid}
+        \legenditem{cUI}{8.9}{0}     {informacja zwrotna dla kierowcy}{solid}
+        \legenditem{cStore}{0}{-0.6} {trwałe składowanie danych}{solid}
+        \legenditem{cTrain}{4.7}{-0.6}{cykl offline (trening / eksport modelu)}{densely dashed}
+    \end{scope}
+\end{tikzpicture}

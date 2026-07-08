@@ -1,0 +1,38 @@
+% Mały diagram cyklu: iteracyjna relacja między fazą akwizycji danych,
+% treningiem modelu (offline) i fazą eksploatacji. Uzupełnienie tabeli
+% "Zestawienie faz pracy systemu" — tabela pokazuje stan, ten diagram pokazuje
+% przepływ w czasie.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    >=Stealth
+]
+    \definecolor{cDevice}{HTML}{2563EB}  % akwizycja — niebieski (jak na rys. architektury)
+    \definecolor{cTrain}{HTML}{C2410C}   % trening offline — spalona pomarańcz
+    \definecolor{cUI}{HTML}{059669}      % eksploatacja — zieleń
+
+    \tikzset{
+        phase/.style={draw=#1, line width=1pt, rounded corners=5pt,
+                      align=center, fill=#1!8, text width=3.1cm,
+                      minimum height=13mm, inner sep=4pt,
+                      preaction={fill=black!45, opacity=0.28,
+                      transform canvas={xshift=0.5mm, yshift=-0.5mm}}},
+        lbl/.style={font=\scriptsize, align=center, text width=3.4cm}
+    }
+
+    \node[phase=cDevice] (akw) at (0,0)
+        {\textbf{Akwizycja danych}\\rejestracja CSV z~magistrali CAN};
+    \node[phase=cTrain]  (tre) at (5.6,0)
+        {\textbf{Trening modelu}\\(offline, na~komputerze PC)};
+    \node[phase=cUI]     (eks) at (11.2,0)
+        {\textbf{Eksploatacja}\\ocena stylu jazdy w~czasie rzeczywistym};
+
+    \draw[-{Stealth[length=2.4mm]}, line width=1pt, cDevice]
+        (akw) -- (tre) node[midway, above, lbl] {nagrania przejazdów};
+    \draw[-{Stealth[length=2.4mm]}, line width=1pt, cTrain]
+        (tre) -- (eks) node[midway, above, lbl] {eksport modelu (emlearn)};
+
+    % Pętla powrotna: eksploatacja nadal rejestruje dane, rozbudowując zbiór.
+    \draw[-{Stealth[length=2.4mm]}, line width=1pt, densely dashed, cUI]
+        (eks.south) -- ++(0,-1.1) -| node[pos=0.25, below, lbl]
+        {dalsza rejestracja danych --- kolejna iteracja} (akw.south);
+\end{tikzpicture}

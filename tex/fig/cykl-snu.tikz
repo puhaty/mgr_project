@@ -1,0 +1,31 @@
+% Mały diagram cyklu: praca aktywna <-> głębokie uśpienie, sterowane
+% aktywnością na magistrali CAN. Uzupełnienie opisu zarządzania energią.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    >=Stealth
+]
+    \definecolor{cActive}{HTML}{2563EB}  % praca aktywna — niebieski
+    \definecolor{cSleep}{HTML}{475569}   % uśpienie — ciemny szary
+
+    \tikzset{
+        st/.style={draw=#1, line width=1pt, rounded corners=5pt,
+                   align=center, fill=#1!8, text width=3.4cm,
+                   minimum height=13mm, inner sep=4pt,
+                   preaction={fill=black!45, opacity=0.28,
+                   transform canvas={xshift=0.5mm, yshift=-0.5mm}}},
+        lbl/.style={font=\scriptsize, align=center, text width=4cm}
+    }
+
+    \node[st=cActive] (akt) at (0,0)
+        {\textbf{Praca aktywna}\\odbiór CAN, rejestracja, inferencja};
+    \node[st=cSleep]  (sen) at (8,0)
+        {\textbf{Głębokie uśpienie}\\podświetlenie wyłączone};
+
+    \draw[-{Stealth[length=2.4mm]}, line width=1pt, cSleep]
+        (akt) -- (sen) node[midway, above, lbl]
+        {20~s bez ramek CAN\\i~bez ręcznej kontroli podświetlenia};
+
+    \draw[-{Stealth[length=2.4mm]}, line width=1pt, densely dashed, cActive]
+        (sen.south) -- ++(0,-1.3) -| node[pos=0.25, below, lbl]
+        {aktywność na magistrali CAN\\(stan niski na~linii RX --- EXT0)} (akt.south);
+\end{tikzpicture}
