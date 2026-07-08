@@ -17,6 +17,7 @@
 #include "wifi_manager.h"
 #include "rtc_manager.h"
 #include "ai_model.h"
+#include "eco_stats.h"
 
 #include <stdlib.h>
 #include <time.h>
@@ -28,6 +29,7 @@ bool ui_backlight_is_user_control(void);
 void ui_save_init_controls(void);
 void ui_save_tick(void);
 void ui_pager_init(void);
+void ui_screenshot_init(void);
 
 extern void ui_save_init_controls(void);
 extern void ui_save_tick(void);
@@ -74,12 +76,16 @@ void app_main()
         ESP_LOGI(TAG, "CAN Init Success!");
     }
 
+    eco_stats_init();
+
     // Initialize UI once under LVGL mutex.
     if (lvgl_port_lock(-1)) {
         ui_init();
+        eco_stats_create_page();  // insert STATS page before the pager counts dots
         ui_pager_init();
         ui_backlight_init_controls();
         ui_save_init_controls();
+        ui_screenshot_init();
         lvgl_port_unlock();
     }
 
@@ -139,6 +145,7 @@ static void maybe_enter_deep_sleep_on_can_timeout(void) {
     ESP_LOGI(TAG, "No CAN traffic for %lu ms (Ignition mode). Entering deep sleep.", (unsigned long)idle_ms);
 
     rtc_manager_save_to_nvs();
+    eco_stats_flush();
     wavesahre_rgb_lcd_bl_off();
 
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
@@ -191,6 +198,7 @@ static void update_ui_can_data(can_data_t* data) {
         lv_label_set_text(objects.label_esp, esp_str);
 
         ai_model_update_ui_locked();
+        eco_stats_update_ui_locked();
 
         lvgl_port_unlock();
     }

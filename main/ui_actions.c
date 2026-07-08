@@ -1,17 +1,21 @@
 #include "ui/actions.h"
 #include "ui/screens.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "lvgl.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "can.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include "sd_card.h"
 #include "wifi_manager.h"
 #include "rtc_manager.h"
 #include "ai_model.h"
+#include "eco_stats.h"
 #include "nvs.h"
 
 static const char *TAG = "ui_actions";
@@ -98,7 +102,7 @@ static void update_perf_monitor_visibility(void) {
 
     uint32_t act = lv_tabview_get_tab_act(objects.tabview_main);
     lv_obj_t *page = lv_obj_get_child(lv_tabview_get_content(objects.tabview_main), act);
-    if (page == objects.tab_ai) {
+    if (page == objects.tab_ai || page == eco_stats_get_page()) {
         lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
@@ -540,6 +544,18 @@ void ui_save_init_controls(void) {
     }
     apply_brightness(brightness);
 
+    // The keyboard was originally nested inside the WiFi box, which the SAVE
+    // page rework shrank to a fixed 260px-tall column half the screen wide -
+    // the keyboard (242px tall) got clipped and pinned inside that box
+    // instead of the screen. Re-parent it to screen_main (after the dim
+    // overlay above so it isn't drawn underneath) and center it along the
+    // bottom of the page instead.
+    if (objects.keyboard_wi_fi != NULL && objects.screen_main != NULL) {
+        lv_obj_set_parent(objects.keyboard_wi_fi, objects.screen_main);
+        lv_obj_set_size(objects.keyboard_wi_fi, LV_PCT(95), 242);
+        lv_obj_align(objects.keyboard_wi_fi, LV_ALIGN_BOTTOM_MID, 0, -8);
+    }
+
     s_bl_user_control = (objects.switch_bl != NULL) && lv_obj_has_state(objects.switch_bl, LV_STATE_CHECKED);
     sd_card_set_control_mode(s_bl_user_control);
     update_sd_mode_controls();
@@ -662,6 +678,31 @@ void action_click_reset_orchard(lv_event_t * e)
     lv_obj_center(mbox);
 }
 
+static void reset_eco_msgbox_cb(lv_event_t * e)
+{
+    lv_obj_t *mbox = lv_event_get_current_target(e);
+    const char *btn = lv_msgbox_get_active_btn_text(mbox);
+
+    if (btn != NULL && strcmp(btn, "Reset") == 0) {
+        eco_stats_reset_all();
+        ESP_LOGI(TAG, "ECO stats reset confirmed");
+    }
+
+    lv_msgbox_close(mbox);
+}
+
+void action_click_reset_eco(lv_event_t * e)
+{
+    LV_UNUSED(e);
+
+    static const char *btns[] = {"Reset", "Cancel", ""};
+    lv_obj_t *mbox = lv_msgbox_create(NULL, "Reset ECO stats",
+                                      "Clear all savings, trip/lifetime stats and streaks shown on the ECO page?",
+                                      btns, false);
+    lv_obj_add_event_cb(mbox, reset_eco_msgbox_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_center(mbox);
+}
+
 void action_switch_changed(lv_event_t * e) {
     LV_UNUSED(e);
 
@@ -750,4 +791,214 @@ static void set_backlight_state(bool on) {
             s_backlight_state = 0;
         }
     }
+}
+
+// Screenshot: hold the top-left corner of any page for 1s to dump the current
+// screen to a BMP on the SD card. A transparent trigger sits on the LVGL top
+// layer (like the brightness dim overlay) so it works on every tab without
+// touching the EEZ Studio-generated screens.
+#define UI_SCREENSHOT_HOLD_MS      1000
+#define UI_SCREENSHOT_CORNER_SIZE  90
+#define SCREENSHOT_DIR             MOUNT_POINT "/snapshots"
+
+static TickType_t s_screenshot_press_start = 0;
+
+#pragma pack(push, 1)
+typedef struct {
+    uint16_t type;
+    uint32_t size;
+    uint16_t reserved1;
+    uint16_t reserved2;
+    uint32_t offset;
+} bmp_file_header_t;
+
+typedef struct {
+    uint32_t header_size;
+    int32_t width;
+    int32_t height;
+    uint16_t planes;
+    uint16_t bpp;
+    uint32_t compression;
+    uint32_t image_size;
+    int32_t x_ppm;
+    int32_t y_ppm;
+    uint32_t colors_used;
+    uint32_t colors_important;
+} bmp_info_header_t;
+#pragma pack(pop)
+
+static esp_err_t screenshot_build_filename(char *buffer, size_t buffer_size) {
+    struct tm rtc_time;
+    if (rtc_manager_read_time(&rtc_time) == ESP_OK && rtc_manager_time_is_valid(&rtc_time)) {
+        int written = snprintf(buffer, buffer_size, "%s/screenshot_%04d%02d%02d_%02d%02d%02d.bmp",
+                               SCREENSHOT_DIR,
+                               rtc_time.tm_year + 1900, rtc_time.tm_mon + 1, rtc_time.tm_mday,
+                               rtc_time.tm_hour, rtc_time.tm_min, rtc_time.tm_sec);
+        return (written > 0 && (size_t)written < buffer_size) ? ESP_OK : ESP_ERR_INVALID_SIZE;
+    }
+
+    uint32_t uptime_ms = (uint32_t)(esp_timer_get_time() / 1000ULL);
+    int written = snprintf(buffer, buffer_size, "%s/screenshot_%010lu.bmp", SCREENSHOT_DIR, (unsigned long)uptime_ms);
+    return (written > 0 && (size_t)written < buffer_size) ? ESP_OK : ESP_ERR_INVALID_SIZE;
+}
+
+// Converts the RGB565 snapshot to a 24-bit uncompressed BMP (bottom-up rows)
+// for maximum viewer compatibility.
+static esp_err_t screenshot_write_bmp(const char *filepath, const lv_img_dsc_t *snap) {
+    uint32_t width = snap->header.w;
+    uint32_t height = snap->header.h;
+    uint32_t row_bytes = width * 3;
+    uint32_t padding = (4 - (row_bytes % 4)) % 4;
+    uint32_t image_size = (row_bytes + padding) * height;
+
+    bmp_file_header_t file_header = {
+        .type = 0x4D42, // "BM"
+        .size = (uint32_t)(sizeof(bmp_file_header_t) + sizeof(bmp_info_header_t) + image_size),
+        .reserved1 = 0,
+        .reserved2 = 0,
+        .offset = (uint32_t)(sizeof(bmp_file_header_t) + sizeof(bmp_info_header_t)),
+    };
+
+    bmp_info_header_t info_header = {
+        .header_size = sizeof(bmp_info_header_t),
+        .width = (int32_t)width,
+        .height = (int32_t)height,
+        .planes = 1,
+        .bpp = 24,
+        .compression = 0,
+        .image_size = image_size,
+        .x_ppm = 0,
+        .y_ppm = 0,
+        .colors_used = 0,
+        .colors_important = 0,
+    };
+
+    FILE *f = fopen(filepath, "wb");
+    if (f == NULL) {
+        ESP_LOGE(TAG, "Failed to open %s for screenshot (errno=%d)", filepath, errno);
+        return ESP_FAIL;
+    }
+
+    esp_err_t ret = ESP_OK;
+    if (fwrite(&file_header, sizeof(file_header), 1, f) != 1 ||
+        fwrite(&info_header, sizeof(info_header), 1, f) != 1) {
+        ret = ESP_FAIL;
+    }
+
+    if (ret == ESP_OK) {
+        uint8_t *row_buf = malloc(row_bytes + padding);
+        if (row_buf == NULL) {
+            ret = ESP_ERR_NO_MEM;
+        } else {
+            memset(row_buf + row_bytes, 0, padding);
+            const uint16_t *pixels = (const uint16_t *)snap->data;
+
+            // BMP rows are stored bottom-up; the snapshot buffer is top-down.
+            for (int32_t y = (int32_t)height - 1; y >= 0 && ret == ESP_OK; y--) {
+                const uint16_t *src_row = pixels + (uint32_t)y * width;
+                for (uint32_t x = 0; x < width; x++) {
+                    uint16_t px = src_row[x];
+                    uint8_t r5 = (px >> 11) & 0x1F;
+                    uint8_t g6 = (px >> 5) & 0x3F;
+                    uint8_t b5 = px & 0x1F;
+                    row_buf[x * 3 + 0] = (uint8_t)((b5 << 3) | (b5 >> 2));
+                    row_buf[x * 3 + 1] = (uint8_t)((g6 << 2) | (g6 >> 4));
+                    row_buf[x * 3 + 2] = (uint8_t)((r5 << 3) | (r5 >> 2));
+                }
+                if (fwrite(row_buf, row_bytes + padding, 1, f) != 1) {
+                    ret = ESP_FAIL;
+                }
+            }
+            free(row_buf);
+        }
+    }
+
+    fclose(f);
+    if (ret != ESP_OK) {
+        remove(filepath);
+    }
+    return ret;
+}
+
+static esp_err_t screenshot_capture_and_save(char *out_path, size_t out_path_size) {
+    struct stat st;
+    if (stat(SCREENSHOT_DIR, &st) != 0 && mkdir(SCREENSHOT_DIR, 0775) != 0 && errno != EEXIST) {
+        ESP_LOGE(TAG, "Failed to create %s (errno=%d)", SCREENSHOT_DIR, errno);
+        return ESP_FAIL;
+    }
+
+    char filepath[192];
+    if (screenshot_build_filename(filepath, sizeof(filepath)) != ESP_OK) {
+        return ESP_FAIL;
+    }
+
+    lv_img_dsc_t *snap = lv_snapshot_take(lv_scr_act(), LV_IMG_CF_TRUE_COLOR);
+    if (snap == NULL) {
+        ESP_LOGE(TAG, "Failed to capture screenshot snapshot");
+        return ESP_FAIL;
+    }
+
+    esp_err_t ret = screenshot_write_bmp(filepath, snap);
+    lv_snapshot_free(snap);
+
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "Screenshot saved: %s", filepath);
+        if (out_path != NULL) {
+            snprintf(out_path, out_path_size, "%s", filepath);
+        }
+    }
+    return ret;
+}
+
+static void screenshot_toast_del_cb(lv_timer_t *timer) {
+    lv_obj_del((lv_obj_t *)timer->user_data);
+}
+
+static void screenshot_show_toast(const char *text) {
+    lv_obj_t *toast = lv_label_create(lv_layer_top());
+    lv_label_set_text(toast, text);
+    lv_obj_set_style_bg_color(toast, lv_color_black(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(toast, LV_OPA_70, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(toast, lv_color_white(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_all(toast, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(toast, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_align(toast, LV_ALIGN_TOP_MID, 0, 10);
+
+    lv_timer_t *timer = lv_timer_create(screenshot_toast_del_cb, 1500, toast);
+    lv_timer_set_repeat_count(timer, 1);
+}
+
+static void screenshot_corner_event_cb(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (code == LV_EVENT_PRESSED) {
+        s_screenshot_press_start = xTaskGetTickCount();
+    } else if (code == LV_EVENT_PRESS_LOST) {
+        s_screenshot_press_start = 0;
+    } else if (code == LV_EVENT_RELEASED) {
+        if (s_screenshot_press_start == 0) {
+            return;
+        }
+        TickType_t held = xTaskGetTickCount() - s_screenshot_press_start;
+        s_screenshot_press_start = 0;
+
+        if (held >= pdMS_TO_TICKS(UI_SCREENSHOT_HOLD_MS)) {
+            esp_err_t ret = screenshot_capture_and_save(NULL, 0);
+            screenshot_show_toast(ret == ESP_OK ? "Screenshot saved" : "Screenshot failed");
+        }
+    }
+}
+
+void ui_screenshot_init(void) {
+    lv_obj_t *corner = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(corner);
+    lv_obj_set_size(corner, UI_SCREENSHOT_CORNER_SIZE, UI_SCREENSHOT_CORNER_SIZE);
+    lv_obj_set_pos(corner, 0, 0);
+    lv_obj_clear_flag(corner, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(corner, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_bg_opa(corner, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_add_event_cb(corner, screenshot_corner_event_cb, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(corner, screenshot_corner_event_cb, LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(corner, screenshot_corner_event_cb, LV_EVENT_PRESS_LOST, NULL);
 }

@@ -1,6 +1,7 @@
 #include "sd_card.h"
 #include "can.h"
 #include "ai_model.h"
+#include "eco_stats.h"
 #include "rtc_manager.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -43,6 +44,7 @@ static void sd_logger_task(void *pvParameters)
         // Feed the model with the same 100 ms CAN snapshot used by SD logging.
         can_data_t sample = *can_app_get_data();
         ai_model_process_sample(&sample);
+        eco_stats_process_sample(&sample);
 
         if (s_is_recording) {
             // Save only while ignition is on.
