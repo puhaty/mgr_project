@@ -31,9 +31,9 @@
 %------------------
 % Strona tytułowa
 %------------------
-\instytut{XXXXXX}
-\kierunek{XXXXXX}
-\specjalnosc{XXXXXX}
+\instytut{Telekomunikacji i Cyberbezpieczeństwa}
+\kierunek{Telekomunikacja}
+\specjalnosc{Teleinformatyka i Cyberbezpieczeństwo}
 \title{
     Analiza stylu jazdy kierowcy w oparciu o rozbudowaną telemetrię i
     uczenie maszynowe
@@ -41,8 +41,8 @@
 % Title in English for English theses
 % In English theses, you may remove this command
 \engtitle{
-    Unnecessarily long and complicated thesis' title \\
-    difficult to read, understand and pronounce
+    Analysis of Driver's Driving Style Based on Comprehensive Telemetry and 
+    Machine Learning
 }
 % Title in Polish for English theses
 % Use it only in English theses
@@ -50,9 +50,9 @@
     Niepotrzebnie długi i skomplikowany tytuł pracy \\
     trudny do przeczytania, zrozumienia i wymówienia
 }
-\author{\{Imię i Nazwisko\}}
-\album{XXXXXX}
-\promotor{XXXXXX}
+\author{Mateusz Chechłowski}
+\album{304139}
+\promotor{dr inż. Tomasz Czarnecki}
 \date{\the\year}
 \maketitle
 
@@ -60,17 +60,66 @@
 % Streszczenie po polsku dla \langpol
 % English abstract if \langeng is set
 %-------------------------------------
-\cleardoublepage % Zaczynamy od nieparzystej strony
-\abstract \lipsum[1-3]
-\keywords XXX, XXX, XXX
 
+\cleardoublepage % Zaczynamy od nieparzystej strony
+
+\begin{abstract}
+Niniejsza praca dyplomowa przedstawia proces projektowania i wdrożenia zaawansowanego systemu monitorowania 
+parametrów technicznych pojazdów, bazującego na technologii Bluetooth Low Energy (BLE) oraz platformie IoT. 
+System ten został zaprojektowany z myślą o monitorowaniu w czasie rzeczywistym kluczowych parametrów technicznych 
+pojazdów, takich jak temperatura, poziom paliwa, stan akumulatora, czy stan zamknięcia baku paliwa. Dane zbierane przez 
+czujniki BLE są przesyłane bezprzewodowo do centralnego serwera, gdzie są przechowywane w bazie danych z co 
+najmniej 30-minutowym buforem czasowym. Użytkownik ma dostęp do tych danych poprzez dedykowaną aplikację, 
+która umożliwia bieżące monitorowanie stanu technicznego pojazdu oraz analizę zarchiwizowanych informacji.
+
+W pracy szczególną uwagę poświęcono optymalizacji zużycia energii, co jest kluczowe dla długotrwałej pracy systemu, 
+zwłaszcza w kontekście pojazdów poruszających się w trudnych warunkach środowiskowych. Ponadto, duży nacisk położono 
+na łatwość instalacji i obsługi systemu, co ma istotne znaczenie dla jego wdrożenia w praktyce. Przeprowadzone testy 
+i analizy wykazały, że opracowane rozwiązanie charakteryzuje się wysoką efektywnością i niezawodnością, co czyni je 
+atrakcyjnym narzędziem do zarządzania flotą pojazdów. System ten może przyczynić się do znaczącej poprawy 
+bezpieczeństwa oraz optymalizacji kosztów operacyjnych związanych z utrzymaniem pojazdów.
+
+Dokumentacja pracy zawiera szczegółowy opis zastosowanych technologii, procesów projektowania, implementacji oraz 
+testowania systemu. Zawarte w niej wyniki i wnioski stanowią podstawę do dalszych prac nad rozwojem i wdrożeniem 
+tego systemu na szeroką skalę.
+\end{abstract}
+
+\begin{keywords}
+IoT, Bluetooth Low Energy, monitoring pojazdów, zarządzanie flotą, optymalizacja energii, 
+systemy telematyczne, niezawodność, archiwizacja danych
+\end{keywords}
+\clearpage
 %----------------------------------------
 % Streszczenie po angielsku dla \langpol
 % Polish abstract if \langeng is set
 %----------------------------------------
-\clearpage
-\secondabstract \kant[1-3]
-\secondkeywords XXX, XXX, XXX
+\begin{secondabstract}
+This thesis presents the design and implementation of an advanced system for monitoring 
+vehicle parameters, based on Bluetooth Low Energy (BLE) technology and an IoT platform. 
+The system is designed to monitor critical vehicle parameters in real-time, including 
+temperature, fuel level, battery status, or Fuel cap opening status . Data collected by BLE sensors 
+are wirelessly transmitted to a central server, where they are stored in a database with 
+at least a 30-minute buffer. Users can access this data through a dedicated application 
+that allows real-time monitoring of the vehicle's technical condition and analysis of archived information.
+
+Significant emphasis was placed on optimizing energy consumption, which is crucial for the 
+long-term operation of the system, especially in vehicles operating under challenging environmental conditions. 
+Additionally, the system's ease of installation and operation was prioritized, making it a viable 
+solution for practical deployment. The conducted tests and analyses demonstrated the high efficiency 
+and reliability of the developed solution, making it an attractive tool for fleet management. 
+This system can significantly contribute to enhancing safety and optimizing operational costs 
+associated with vehicle maintenance.
+
+The documentation of this thesis includes a detailed description of the technologies used, 
+the design and implementation processes, as well as the testing of the system. The results 
+and conclusions presented provide a solid foundation for further work on the development and 
+large-scale deployment of this system.
+\end{secondabstract}
+
+\begin{secondkeywords}
+IoT, Bluetooth Low Energy, vehicle monitoring, fleet management, energy optimization, 
+telematics systems, reliability, data archiving
+\end{secondkeywords}
 
 \pagestyle{plain}
 
@@ -86,14 +135,39 @@
 \cleardoublepage % Zaczynamy od nieparzystej strony
 \pagestyle{headings}
 
+\section{Cel Pracy}
+Celem pracy magisterskiej jest zaprojektowanie systemu analizy stylu jazdy
+kierowcy ukierunkowanego na bezpieczeństwo i optymalizację zużycia wybranych
+komponentów pojazdu. U podstaw rozwiązania leży założenie, że dane opisujące
+sposób prowadzenia pojazdu, pochodzące z magistrali CAN, pozwalają na obiektywną
+i wiarygodną ocenę stylu jazdy. System ma umożliwiać zbieranie, analizę oraz
+interpretację tych danych, a następnie --- z wykorzystaniem modelu uczenia
+maszynowego --- klasyfikację stylu jazdy i ocenę, czy sposób prowadzenia pojazdu
+ma charakter ekonomiczny czy nieekonomiczny. Efektem (wynikiem) mają być
+wskazówki, które poprzez interfejs graficzny, przekazywane są kierowcy w czasie
+rzeczywistym, nagradzając jazdę ekonomiczną oraz sygnalizując zachowania
+nieekonomiczne. Przyjęto przy tym założenie, że skuteczniejszą formą
+oddziaływania na kierowcę niż ostrzeżenia i komunikaty o błędach są mechanizmy o
+charakterze motywacyjnym. Dlatego w projektowaniu interfejsu wykorzystano zasady
+nudgingu (subtelne nakierowywanie ludzi na określone decyzje poprzez zmianę
+architektury wyboru) oraz elementy gamifikacji (zwiększenie zaangażowania,
+motywacji i ułatwienie realizacji rutynowych zadań). Nadrzędnym celem
+praktycznym rozwiązania jest poprawa nawyków kierowcy w kierunku jazdy
+ekonomicznej i ekologicznej, ograniczenie gwałtownych przyspieszeń i hamowań
+oraz utrzymywanie płynnej, stabilnej jazdy. Przekłada się to bowiem bezpośrednio
+na zmniejszenie zużycia paliwa, redukcję emisji szkodliwych substancji, niższe
+koszty eksploatacji pojazdu, a także na zwiększenie bezpieczeństwa na drodze.
+Praca ma zweryfikować tezę, że połączenie telemetrii pojazdu z metodami uczenia
+maszynowego oraz odpowiednio zaprojektowanym interfejsem informacyjnym pozwala
+skutecznie wpływać na styl jazdy kierowcy, prowadząc do wymiernych korzyści
+ekonomicznych, ekologicznych oraz w zakresie bezpieczeństwa.
+
 \input{tex/1-wstep}         % Wygodnie jest trzymać każdy rozdział w osobnym pliku.
-\input{tex/2-de-finibus}    % Umożliwia to również łatwą migrację do nowej wersji szablonu:
-\input{tex/3-code-listings} % zazwyczaj wystarczy podmienić plik src/wut-thesis.cls
+\input{tex/2-wymagania-projektowe}    % Umożliwia to również łatwą migrację do nowej wersji szablonu:
+\input{tex/3-projekt}
 
  % Można też pisać rozdziały w jednym pliku.
 \clearpage % Zawsze zaczynamy rozdział od nowej strony
-\section{Summatio}
-\lipsum[4-10]
 
 %---------------
 % Bibliografia
@@ -137,10 +211,10 @@
 \clearpage
 \appendix{Nazwa załącznika 1}
 \lipsum[1-3]
-\begin{figure}[!h]
-	\centering \includegraphics[width=0.5\linewidth]{logopw2.png}
-	\caption{Obrazek w załączniku.}
-\end{figure}
+% \begin{figure}[!h]
+% 	\centering \includegraphics[width=0.5\linewidth]{logopw2.png}
+% 	\caption{Obrazek w załączniku.}
+% \end{figure}
 \lipsum[4-7]
 
 % Załącznik 2

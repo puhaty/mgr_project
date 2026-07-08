@@ -5,3 +5,4 @@ test/**/*.pdf
 .vscode
 /*.pdf
 project/
+CLAUDE.md

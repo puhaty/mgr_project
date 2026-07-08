@@ -1,0 +1,110 @@
+\clearpage % Rozdziały zaczynamy od nowej strony.
+\section{Wymagania Projektowe}
+
+Celem pracy jest opracowanie systemu analizy stylu jazdy kierowcy w oparciu o
+telemetrię pozyskiwaną z magistrali CAN oraz model uczenia maszynowego, którego
+wynik prezentowany jest kierowcy w czasie rzeczywistym. Skutkiem działania
+systemu ma być poprawa ekonomiki jazdy oraz ograniczenie niekorzystnych nawyków
+kierowcy, a w konsekwencji zmniejszenie zużycia paliwa i wolniejsze zużywanie
+eksploatacyjnych podzespołów pojazdu. Realizacja tego założenia wymaga przejścia
+przez kilka powiązanych ze sobą etapów.
+
+Pierwszym krokiem w realizacji tego założenia jest analiza danych — z jednej strony
+określenie, jakie parametry telemetryczne niosą informację o sposobie prowadzenia
+pojazdu, takie jak prędkość pojazdu, prędkość obrotowa silnika oraz stopień
+wciśnięcia pedału przyspieszenia i hamulca wraz z wyznaczanymi na ich podstawie
+wielkościami pochodnymi, a z drugiej zbadanie, które z tych danych pojazd faktycznie
+udostępnia na magistrali CAN oraz w jakiej postaci są one przesyłane. Na tym etapie
+określa się również wymaganą częstotliwość oraz rozdzielczość akwizycji danych, tak
+aby możliwe było wiarygodne odwzorowanie dynamiki jazdy.
+
+Po ustaleniu, jakie dane mają być pozyskiwane i w jaki sposób, kolejnym krokiem jest
+analiza wymagań stawianych platformie sprzętowej, pełniącej rolę jednostki
+obliczeniowej oraz panelu kierowcy. Urządzenie musi dysponować interfejsem CAN
+umożliwiającym odbiór danych z magistrali, wydajnością wystarczającą do lokalnego
+wykonywania predykcji modelu uczenia maszynowego, wyświetlaczem, najlepiej
+dotykowym, do prezentacji interfejsu kierowcy, slotem na kartę pamięci pozwalającym
+zapisywać nagrania danych z magistrali, układem zegara czasu rzeczywistego oraz
+łącznością bezprzewodową. Analiza dostępnych rozwiązań pozwala dobrać platformę
+spełniającą wszystkie te wymagania w ramach jednego modułu.
+
+Dysponując odpowiednią platformą, przechodzi się do zaprojektowania i
+implementacji aplikacji odpowiedzialnej za gromadzenie danych z pojazdu. Obejmuje
+to odbiór ramek z magistrali CAN w trybie wyłącznie nasłuchującym, który nie ingeruje
+w komunikację pojazdu, ich parsowanie na podstawie identyfikatorów oraz walidację
+polegającą na odrzucaniu wartości nieprawidłowych. Zarejestrowane dane są
+znakowane czasem z wykorzystaniem układu zegara czasu rzeczywistego, którego
+wskazania mogą być aktualizowane poprzez łączność bezprzewodową, a następnie
+zapisywane na karcie pamięci w ustalonym formacie oraz przy stałej częstotliwości
+próbkowania. Na tym etapie realizowane są również funkcje zapewniające
+niezawodną pracę urządzenia w pojeździe, takie jak trwałe przechowywanie
+parametrów konfiguracyjnych oraz mechanizmy oszczędzania energii, obejmujące
+przechodzenie w stan uśpienia przy braku aktywności na magistrali i wybudzanie po
+wykryciu ruchu.
+
+Po zgromadzeniu danych kolejnym krokiem jest analiza modeli uczenia maszynowego
+pod kątem ich przydatności do klasyfikacji stylu jazdy. Przeglądowi podlegają klasy
+algorytmów nadające się do działania na urządzeniu wbudowanym, ze szczególnym
+uwzględnieniem niskiego zużycia pamięci oraz krótkiego czasu predykcji. Na
+podstawie tej analizy wybierane są modele kandydujące, które poddawane są
+dalszym pracom.
+
+Wybór modeli pozwala przejść do przygotowania danych uczących. Etap ten obejmuje
+weryfikację zgromadzonych danych oraz usunięcie wartości błędnych, sprowadzenie
+ich do stałej siatki próbkowania, a także odfiltrowanie fragmentów nieprzydatnych do
+analizy, takich jak postój przy zgaszonym silniku czy jazda na biegu wstecznym. Na
+podstawie przygotowanych danych wyznaczane są cechy opisujące charakter jazdy
+w przesuwnych oknach czasowych, a poszczególnym oknom nadawane są etykiety
+odpowiadające jeździe ekonomicznej, neutralnej oraz nieekonomicznej, zgodnie z
+przyjętymi regułami opartymi na wartościach cech opisujących dynamikę jazdy.
+
+Tak przygotowany zbiór służy do wytrenowania wybranych modeli, które są następnie
+porównywane pod względem dokładności oraz stabilności działania, między innymi z
+wykorzystaniem walidacji krzyżowej grupowanej po przejazdach. Wytrenowane
+modele eksportowane są do postaci biblioteki w języku C, możliwej do wykorzystania
+bezpośrednio w oprogramowaniu mikrokontrolera, z uwzględnieniem kwantyzacji
+cech ograniczającej zużycie zasobów. Do konwersji modelu rozważane są dostępne
+narzędzia, takie jak emlearn umożliwiający generowanie statycznego kodu w języku
+C czy formaty pośrednie typu ONNX lub TensorFlow Lite.
+
+Wyeksportowane modele osadzane są w oprogramowaniu panelu, gdzie predykcja
+odbywa się lokalnie, na podstawie strumienia danych pochodzących z magistrali. Na
+tym etapie przeprowadzana jest walidacja w warunkach rzeczywistych, podczas jazdy
+pojazdem, pozwalająca ocenić, który z modeli radzi sobie lepiej, i wybrać rozwiązanie
+docelowe. Na podstawie klasyfikacji kolejnych okien czasowych wyznaczany jest
+bieżący wskaźnik oceny stylu jazdy, który jest podwyższany przy jeździe
+ekonomicznej oraz obniżany w przypadku zachowań nieekonomicznych.
+
+Następnym etapem jest zaprojektowanie i implementacja czytelnej oraz atrakcyjnej
+wizualnie szaty graficznej interfejsu kierowcy. Wymaga to doboru biblioteki graficznej
+umożliwiającej budowę interfejsu na wyświetlaczu wbudowanym oraz
+zaprojektowania sposobu prezentacji wyników zgodnie z przyjętymi w celu pracy
+zasadami nudgingu oraz gamifikacji, obejmującymi intuicyjną kolorystykę
+sygnalizującą ocenę jazdy, bieżący wskaźnik punktowy oraz subtelne wskazówki
+zamiast komunikatów o błędach. Istotne jest przy tym, aby interfejs nie rozpraszał
+uwagi kierowcy i przyciągał ją jedynie wtedy, gdy jest to konieczne.
+
+Ostatnim etapem prac są testy i walidacja całego rozwiązania, obejmujące weryfikację
+poprawności akwizycji oraz parsowania danych z magistrali CAN, ocenę jakości
+klasyfikacji modelu, a także testy działania systemu jako całości w warunkach
+rzeczywistych. Testy obejmują zarówno weryfikację poszczególnych komponentów,
+jak i pracę systemu jako całości, a ich wyniki podlegają dokładnej analizie i
+dokumentowaniu, przy bieżącym usuwaniu wykrytych nieprawidłowości.
+
+Najważniejszym etapem pracy będzie wykazanie, że połączenie telemetrii pojazdu z
+metodami uczenia maszynowego oraz odpowiednio zaprojektowanym interfejsem
+informacyjnym rzeczywiście pozwala skutecznie wpływać na styl jazdy kierowcy.
+Wymaga to zdefiniowania mierzalnych kryteriów oceny, na podstawie których możliwe
+będzie rozstrzygnięcie, w jakim stopniu przyjęte założenia znajdują potwierdzenie. Do
+kryteriów tych należą skuteczność klasyfikacji stylu jazdy przez model, zdolność
+interfejsu do wywoływania pożądanej zmiany zachowań kierowcy oraz przełożenie tej
+zmiany na wymierne korzyści w zakresie ekonomii eksploatacji pojazdu, ograniczenia
+emisji oraz bezpieczeństwa. Uzyskane wyniki podlegają analizie i interpretacji,
+stanowiąc podstawę do oceny skuteczności opracowanego rozwiązania.
+
+Na zakończenie projektu sporządzona zostanie dokumentacja techniczna opisująca
+cały proces projektowania oraz implementacji rozwiązania. Dokumentacja ta powinna
+obejmować opis architektury systemu i zastosowanych technologii, sposób
+przygotowania danych oraz trenowania i wyboru modelu, schematy poszczególnych
+komponentów, wyniki przeprowadzonych testów, a także wnioski oraz rekomendacje
+dotyczące dalszego rozwoju systemu.
