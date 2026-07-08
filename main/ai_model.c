@@ -494,7 +494,7 @@ static void ai_tree_ensure_created(void)
     lv_obj_set_flex_flow(s_money_pill, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(s_money_pill, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(s_money_pill, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_align(s_money_pill, LV_ALIGN_TOP_MID, 0, 60);
+    lv_obj_align(s_money_pill, LV_ALIGN_TOP_MID, 0, 30);
 
     lv_obj_t *money_caption = lv_label_create(s_money_pill);
     lv_obj_set_style_text_font(money_caption, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
