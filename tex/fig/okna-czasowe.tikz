@@ -1,0 +1,48 @@
+% Diagram: przesuwne okna czasowe (5 s, krok 2,5 s, 50% nakładania) na
+% przebiegu sygnału. Ilustruje schemat okna z podrozdziału o ekstrakcji cech.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    >=Stealth
+]
+    \definecolor{cSignal}{HTML}{475569}  % przebieg sygnału — ciemny szary
+    \definecolor{cWin1}{HTML}{2563EB}    % okno 1 — niebieski
+    \definecolor{cWin2}{HTML}{7C3AED}    % okno 2 — fiolet
+    \definecolor{cWin3}{HTML}{059669}    % okno 3 — zielony
+
+    % ---- Oś czasu i przykładowy przebieg sygnału ----
+    \draw[->, thick] (0,0) -- (13,0) node[right] {$t$ [s]};
+    \foreach \x/\lbl in {0/0, 2.5/2,5, 5/5, 7.5/7,5, 10/10} {
+        \draw (\x,0.08) -- (\x,-0.08) node[below] {\lbl};
+    }
+
+    % Przykładowy, wygładzony przebieg (np. prędkości) — polilinia.
+    \draw[cSignal, thick]
+        (0,1.6) .. controls (1,1.9) and (1.5,2.3) .. (2,2.6)
+        .. controls (3,3.1) and (3.5,2.4) .. (4.2,2.0)
+        .. controls (5,1.6) and (5.8,2.5) .. (6.5,3.0)
+        .. controls (7.5,3.6) and (8,2.8) .. (9,2.2)
+        .. controls (10,1.7) and (11,2.1) .. (12,2.4);
+
+    % ---- Trzy kolejne okna, przesunięte o 2,5 s (50% nakładania) ----
+    \draw[cWin1, line width=1.2pt] (0,4.6) -- (5,4.6);
+    \draw[cWin1] (0,4.4) -- (0,4.8);
+    \draw[cWin1] (5,4.4) -- (5,4.8);
+    \node[cWin1, anchor=west, font=\scriptsize] at (5.15,4.6) {okno 1 (0,0--5,0~s)};
+
+    \draw[cWin2, line width=1.2pt] (2.5,3.9) -- (7.5,3.9);
+    \draw[cWin2] (2.5,3.7) -- (2.5,4.1);
+    \draw[cWin2] (7.5,3.7) -- (7.5,4.1);
+    \node[cWin2, anchor=west, font=\scriptsize] at (7.65,3.9) {okno 2 (2,5--7,5~s)};
+
+    \draw[cWin3, line width=1.2pt] (5,3.2) -- (10,3.2);
+    \draw[cWin3] (5,3.0) -- (5,3.4);
+    \draw[cWin3] (10,3.0) -- (10,3.4);
+    \node[cWin3, anchor=west, font=\scriptsize] at (10.15,3.2) {okno 3 (5,0--10,0~s)};
+
+    % Zacieniowanie obszaru nakładania się okien 1 i 2 (50% wspólnej długości).
+    \fill[cWin1!15] (2.5,-0.05) rectangle (5,4.9);
+
+    % Krok przesunięcia okna, zaznaczony pod osią czasu.
+    \draw[<->, cSignal] (0,-0.7) -- (2.5,-0.7);
+    \node[cSignal, font=\scriptsize] at (1.25,-1.0) {krok 2,5~s};
+\end{tikzpicture}

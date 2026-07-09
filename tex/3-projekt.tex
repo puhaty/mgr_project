@@ -131,7 +131,11 @@ w zakresie akwizycji danych z magistrali CAN, jak i lokalnego wykonywania
 predykcji modelu uczenia maszynowego. Punktem wyjścia była lista wymagań
 funkcjonalnych, jakie musi spełniać jednostka pełniąca jednocześnie rolę
 rejestratora danych i panelu kierowcy; na jej podstawie wybrano moduł
-integrujący wszystkie niezbędne interfejsy na jednej płytce.
+integrujący wszystkie niezbędne interfejsy na jednej płytce. Platforma ta
+pozostaje przy tym niezmienna w obu fazach pracy systemu opisanych
+w podrozdziale~\ref{sec:architektura} --- to samo urządzenie pełni funkcję
+rejestratora danych podczas budowy zbioru uczącego oraz panelu kierowcy
+w fazie docelowej.
 
 \subsubsection{Wymagania stawiane platformie}
 
@@ -202,6 +206,22 @@ okablowanie modułu. Dobór tego konkretnego modułu potwierdza
 wniosek z podrozdziału~\ref{sec:architektura}: wszystkie wymagania funkcjonalne
 udało się zrealizować w ramach jednej, zwartej platformy sprzętowej, bez
 potrzeby integrowania dodatkowych komponentów zewnętrznych.
+
+Dostępne zasoby pamięci znajdują odzwierciedlenie w rzeczywistym
+zapotrzebowaniu oprogramowania. Pamięć Flash w całości podzielona jest
+pomiędzy obraz oprogramowania (6~MB) oraz pamięć nieulotną przechowującą
+dane konfiguracyjne i liczniki (podrozdział~\ref{sec:implementacja}); w
+obrazie oprogramowania mieści się zarówno wyeksportowany model klasyfikacji
+stylu jazdy (podrozdział~\ref{sec:trening}), jak i grafiki wizualizacji
+eko-drzewka i sadu (podrozdział~\ref{sec:ui}), zajmujące większość tej
+przestrzeni. Pamięć PSRAM wykorzystywana jest przede wszystkim przez
+bufory ramki obrazu biblioteki LVGL, których rozmiar --- przy rozdzielczości
+wyświetlacza 800$\times$480~px i~16-bitowej głębi koloru --- przekracza
+pojemność wewnętrznej pamięci SRAM układu SoC. Dwurdzeniowa architektura
+procesora pozwala natomiast na jednoczesną pracę zadania odświeżającego
+interfejs graficzny oraz zadań obsługujących magistralę CAN i predykcję
+modelu (podrozdział~\ref{sec:implementacja}), bez wzajemnego blokowania się
+tych funkcji.
 
 \begin{figure}[!h]
     \centering
@@ -307,6 +327,30 @@ włączonym zapłonie; dostępny jest również tryb ręcznego sterowania
 nagrywaniem, nadrzędny wobec logiki automatycznej, wykorzystywany m.in. przy
 testach systemu poza typowym cyklem jazdy.
 
+Tabela~\ref{tab:przyklad-csv} przedstawia rzeczywisty fragment jednego
+z zarejestrowanych plików, obejmujący moment przyspieszania pojazdu ---
+widoczny jest wzrost prędkości, obrotów silnika oraz położenia pedału
+przyspieszenia w kolejnych rekordach, a także niewielkie odchylenia
+znacznika czasu od nominalnego kroku 100~ms, charakterystyczne dla
+zdarzeniowej natury magistrali CAN (podrozdział~\ref{sec:akwizycja}) ---
+odchylenia te są następnie usuwane przez sprowadzenie do stałej siatki
+czasowej na etapie przygotowania danych (podrozdział~\ref{sec:dane}).
+
+\begin{table}[!h]
+    \centering
+    \caption{Fragment rzeczywistego pliku CSV zarejestrowanego przez urządzenie.}
+    \label{tab:przyklad-csv}
+    \begin{tabular}{| r | c | c | c | c | c | c |} \hline
+        \textbf{timestamp} & \textbf{speed} & \textbf{rpm} & \textbf{throttle} & \textbf{brake} & \textbf{fuel\_level} & \textbf{oil\_temp} \\ \hline\hline
+        74364 & 31 & 2399 & 137 & 0 & 39 & 75 \\ \hline
+        74506 & 31 & 2448 & 137 & 0 & 39 & 75 \\ \hline
+        74605 & 32 & 2496 & 137 & 0 & 39 & 76 \\ \hline
+        74733 & 33 & 2550 & 132 & 0 & 39 & 76 \\ \hline
+        74857 & 34 & 2651 & 129 & 0 & 39 & 76 \\ \hline
+        74991 & 35 & 2683 & 114 & 0 & 39 & 76 \\ \hline
+    \end{tabular}
+\end{table}
+
 \subsubsection{Niezawodność i zarządzanie energią}
 
 Praca urządzenia w pojeździe wymaga odporności na utratę zasilania (np. przy
@@ -390,10 +434,20 @@ zaimplementowano bezpośrednio w oprogramowaniu urządzenia
 (podrozdział~\ref{sec:implementacja}). Okna, dla których średnia prędkość
 w oknie nie przekracza 2~km/h, są pomijane na etapie przygotowania danych ---
 odpowiadający im przypadek postoju obsługiwany jest bezpośrednio w
-oprogramowaniu mikrokontrolera bez udziału modelu. Dla każdego pozostałego
+oprogramowaniu mikrokontrolera bez udziału modelu. Rysunek~\ref{fig:okna-czasowe}
+ilustruje ten schemat: kolejne okna zachodzą na siebie w połowie swojej
+długości, dzięki czemu zmiana stylu jazdy jest uchwytywana przez nowe okno
+najpóźniej po 2,5~s, a nie dopiero po pełnych 5~s. Dla każdego pozostałego
 okna wyznaczany jest wektor 20 cech statystycznych, zestawionych w
 tabeli~\ref{tab:cechy}, opisujących rozkład prędkości, obrotów silnika,
 położenia pedałów, przyspieszenia i szarpnięcia w obrębie okna.
+
+\begin{figure}[!h]
+    \centering
+    \resizebox{0.85\linewidth}{!}{\input{tex/fig/okna-czasowe.tikz}}
+    \caption{Schemat przesuwnych okien czasowych: długość okna 5~s, krok przesunięcia 2,5~s (50\% nakładania).}
+    \label{fig:okna-czasowe}
+\end{figure}
 
 \begin{table}[!h]
     \centering
@@ -546,10 +600,23 @@ Zbiór 21\,725 okien podzielono na część treningową i testową funkcją
 \texttt{GroupShuffleSplit} (25\% na test) grupowaną po pliku źródłowym
 przejazdu, dzięki czemu okna z tego samego przejazdu --- silnie ze sobą
 skorelowane w czasie --- nie mogły jednocześnie trafić do zbioru treningowego
-i testowego. Podział dał 14\,515 okien treningowych (31 plików) oraz
+i testowego. Rysunek~\ref{fig:podzial-grupowany} ilustruje tę zasadę: gdyby
+okna przydzielano do zbiorów pojedynczo i losowo, sąsiadujące w czasie okna
+z tego samego przejazdu (a więc niemal identyczne pod względem cech) mogłyby
+trafić po obu stronach podziału, sztucznie zawyżając wynik na zbiorze
+testowym --- model \mbox{,,rozpoznawałby''} fragment przejazdu, na którym
+częściowo już się uczył, zamiast oceniać jego zdolność do generalizacji na
+zupełnie nowe przejazdy. Podział dał 14\,515 okien treningowych (31 plików) oraz
 7\,210 okien testowych (11 plików). Parametry kwantyzacji (skalowanie do
 zakresu $-30000$ -- $30000$) dopasowano wyłącznie na zbiorze treningowym
 i zastosowano bez ponownego dopasowania do zbioru testowego.
+
+\begin{figure}[!h]
+    \centering
+    \resizebox{\linewidth}{!}{\input{tex/fig/podzial-grupowany.tikz}}
+    \caption{Podział na zbiór treningowy i testowy grupowany po pliku źródłowym --- wszystkie okna danego przejazdu trafiają do tego samego zbioru.}
+    \label{fig:podzial-grupowany}
+\end{figure}
 
 Wyniki klasyfikacji modelu RandomForest na zbiorze testowym zestawiono
 w tabeli~\ref{tab:wyniki-test}. Uzyskano dokładność zbalansowaną
@@ -637,6 +704,13 @@ gazu.
     \end{tabular}
 \end{table}
 
+\begin{figure}[!h]
+    \centering
+    \resizebox{0.8\linewidth}{!}{\input{tex/fig/waznosc-cech.tikz}}
+    \caption{Ważność dziesięciu najważniejszych cech modelu RandomForest (dane z~tabeli~\ref{tab:waznosc-cech}).}
+    \label{fig:waznosc-cech}
+\end{figure}
+
 \subsubsection{Eksport modelu do kodu C}
 
 Wytrenowany model RandomForest (60 drzew, głębokość 7, łącznie 6034 węzły)
@@ -663,7 +737,10 @@ odpowiedzialne za poszczególne funkcje systemu: akwizycję i rejestrację
 danych (podrozdział~\ref{sec:akwizycja}), lokalną predykcję modelu uczenia
 maszynowego oraz naliczanie statystyk oszczędności, opisane w niniejszym
 podrozdziale, a także warstwę graficzną, opisaną w
-podrozdziale~\ref{sec:ui}.
+podrozdziale~\ref{sec:ui}. Niniejszy podrozdział opisuje sposób, w jaki
+elementy zaprojektowane i przygotowane osobno --- akwizycja danych, model
+uczenia maszynowego oraz model naliczania oszczędności --- zostały
+połączone w jeden, spójnie działający system wbudowany.
 
 \subsubsection{Struktura oprogramowania}
 
@@ -675,10 +752,27 @@ z magistrali CAN oraz cykliczne odświeżanie interfejsu; dedykowane zadanie
 próbkujące, uruchamiane co 100~ms (10~Hz), które odczytuje bieżący stan
 pojazdu i przekazuje tę samą próbkę równolegle do rejestratora danych, modułu
 predykcji modelu oraz modułu statystyk oszczędności; a także zadanie
-odświeżające warstwę graficzną. Dostęp do obiektów interfejsu graficznego,
-współdzielonych między wątkami, chroniony jest rekurencyjnym muteksem ---
-każda operacja modyfikująca ekran, niezależnie od tego, z którego wątku jest
-wywoływana, musi najpierw uzyskać tę blokadę.
+odświeżające warstwę graficzną. Takie rozwiązanie --- pojedyncze źródło
+próbki, rozsyłanej do wszystkich zainteresowanych modułów --- gwarantuje, że
+rekord zapisany na karcie SD, okno ocenione przez model oraz zdarzenie
+uwzględnione w statystykach oszczędności zawsze odnoszą się do dokładnie
+tego samego stanu pojazdu, bez rozjazdu między poszczególnymi modułami ---
+schemat tego przepływu przedstawiono na rysunku~\ref{fig:fanout-probka}.
+
+\begin{figure}[!h]
+    \centering
+    \resizebox{0.8\linewidth}{!}{\input{tex/fig/fanout-probka.tikz}}
+    \caption{Jedna próbka stanu pojazdu rozsyłana równolegle do trzech niezależnych modułów.}
+    \label{fig:fanout-probka}
+\end{figure}
+
+Dostęp do obiektów interfejsu graficznego, współdzielonych między wątkami,
+chroniony jest rekurencyjnym muteksem, dopuszczającym wielokrotne zajęcie
+blokady przez ten sam wątek --- co jest istotne, ponieważ funkcje
+odświeżające poszczególne fragmenty interfejsu (np. moduł predykcji modelu
+i moduł statystyk oszczędności) wywołują się wzajemnie. Każda operacja
+modyfikująca ekran, niezależnie od tego, z którego wątku jest wywoływana,
+musi najpierw uzyskać tę blokadę.
 
 \begin{table}[!h]
     \centering
@@ -715,7 +809,13 @@ co zapewnia możliwie najkrótsze opóźnienie reakcji interfejsu na zmianę
 stylu jazdy. Wyznaczony wektor cech poddawany jest tej samej kwantyzacji do
 liczb całkowitych, z użyciem parametrów wyznaczonych na zbiorze treningowym
 (podrozdział~\ref{sec:trening}), po czym klasyfikowany jest przez osadzony
-model drzewiasty.
+model drzewiasty. Zachowanie zgodności --- tych samych wzorów cech, tych
+samych filtrów oraz tych samych parametrów kwantyzacji --- między etapem
+przygotowania danych uczących a modułem inferencji na urządzeniu jest
+warunkiem koniecznym poprawnego działania modelu: wytrenowana zależność
+między cechami a stylem jazdy jest miarodajna wyłącznie wtedy, gdy cechy
+podawane modelowi w czasie rzeczywistym są wyznaczane dokładnie w ten sam
+sposób, co cechy, na których model się uczył.
 
 Wynik klasyfikacji aktualizuje wewnętrzny wskaźnik postępu, rosnący przy
 jeździe ekonomicznej i malejący przy jeździe agresywnej, zgodnie z zasadą
@@ -777,6 +877,15 @@ w pamięci NVS periodycznie oraz przy każdym wyłączeniu zapłonu, oraz
 liczniki bieżącego przejazdu, zerowane przy starcie urządzenia (które --- jak
 opisano w podrozdziale~\ref{sec:akwizycja} --- zasypia między kolejnymi
 przejazdami, więc start urządzenia odpowiada początkowi przejazdu).
+
+Rysunek~\ref{fig:stats-po} w podrozdziale~\ref{sec:ui} przedstawia
+rzeczywisty przykład wyniku tych wyliczeń, zarejestrowany w~trakcie testów
+urządzenia: przy 15,5~km przejechanych stylem ekonomicznym w danym zakresie
+urządzenie oszacowało łączną oszczędność 15,12~PLN, złożoną z 2,64~PLN
+oszczędności wynikającej z~mniejszego zużycia paliwa (0,42~l) oraz ok.
+12,48~PLN oszczędności eksploatacyjnych, a także 0,9~kg unikniętej emisji
+CO2 --- przy udziale stylów jazdy w tym zakresie wynoszącym odpowiednio
+39\% ekonomiczny, 55\% neutralny i~6\% agresywny.
 
 %---------------------------------------------------------------
 \subsection{Interfejs użytkownika}

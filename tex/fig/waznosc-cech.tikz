@@ -1,0 +1,42 @@
+% Wykres słupkowy: dziesięć najważniejszych cech modelu RandomForest
+% (te same dane, co w tabeli "Dziesięć najważniejszych cech modelu RandomForest").
+\begin{tikzpicture}[
+    font=\footnotesize,
+    >=Stealth
+]
+    \definecolor{cML}{HTML}{7C3AED}  % ważność cech — fiolet (jak ścieżka ML na innych schematach)
+
+    % Dane: (etykieta, wartość w %), od najważniejszej do najmniej ważnej.
+    \def\dane{
+        {speed\_mean}/25.8,
+        {speed\_p95}/15.1,
+        {rpm\_mean}/12.8,
+        {rpm\_p95}/8.2,
+        {a\_mean}/7.8,
+        {throttle\_dp95}/7.2,
+        {throttle\_mean}/5.1,
+        {a\_p05}/3.6,
+        {a\_p95}/3.6,
+        {throttle\_p95}/3.3
+    }
+
+    \def\maxval{26}
+    \def\barscale{0.28} % cm na 1 punkt procentowy
+    \def\rowheight{0.62}
+
+    % Oś pozioma i podpisy.
+    \draw[->] (0,0) -- (\maxval*\barscale + 0.5,0) node[right] {\%};
+    \foreach \v in {0,5,...,25} {
+        \draw (\v*\barscale,0.05) -- (\v*\barscale,-0.05) node[below, font=\scriptsize] {\v};
+    }
+
+    % Słupki + etykiety cech (rysowane od góry, więc numerujemy od 0 w dół).
+    \foreach [count=\i from 0] \featname/\val in \dane {
+        \pgfmathsetmacro{\y}{-(\i)*\rowheight - 0.35}
+        \pgfmathsetmacro{\w}{\val*\barscale}
+        \fill[cML!85] (0,\y) rectangle (\w,\y+0.42);
+        \draw[cML] (0,\y) rectangle (\w,\y+0.42);
+        \node[anchor=east, font=\scriptsize] at (-0.15,\y+0.21) {\texttt{\featname}};
+        \node[anchor=west, font=\scriptsize] at (\w+0.1,\y+0.21) {\val\%};
+    }
+\end{tikzpicture}

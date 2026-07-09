@@ -1,0 +1,37 @@
+% Diagram: podział na zbiór treningowy/testowy grupowany po pliku źródłowym
+% (GroupShuffleSplit). Każdy plik (przejazd) w całości trafia do jednego
+% zbioru — okna należące do tego samego pliku nigdy nie są rozdzielone.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    >=Stealth
+]
+    \definecolor{cTrain}{HTML}{2563EB}  % zbiór treningowy — niebieski
+    \definecolor{cTest}{HTML}{059669}   % zbiór testowy — zielony
+
+    \tikzset{
+        cell/.style={draw=white, line width=0.8pt, minimum width=6mm, minimum height=9mm}
+    }
+
+    % Cztery przykładowe pliki (przejazdy), każdy podzielony na okna (komórki).
+    % Pliki A-C trafiają do zbioru treningowego, plik D do zbioru testowego.
+    \foreach \file/\ncells/\color/\x in {A/5/cTrain/0, B/4/cTrain/4.2, C/6/cTrain/8.0, D/4/cTest/13.4} {
+        \node[font=\bfseries\scriptsize] at (\x + \ncells*0.3, 1.3) {plik \file};
+        \foreach \i in {1,...,\ncells} {
+            \node[cell, fill=\color] at (\x + \i*0.6 - 0.3, 0.6) {};
+        }
+    }
+
+    \draw[decorate, decoration={brace, amplitude=5pt}, cTrain, line width=0.8pt]
+        (-0.1,0.05) -- (11.7,0.05);
+    \node[cTrain, font=\scriptsize] at (5.8,-0.4) {zbiór treningowy (pliki A, B, C)};
+
+    \draw[decorate, decoration={brace, amplitude=5pt}, cTest, line width=0.8pt]
+        (13.3,0.05) -- (15.9,0.05);
+    \node[cTest, font=\scriptsize] at (14.6,-0.4) {zbiór testowy (plik D)};
+
+    % Legenda
+    \node[cell, fill=cTrain, minimum width=4mm, minimum height=4mm] (lt) at (0.2,-1.3) {};
+    \node[anchor=west, font=\scriptsize] at (0.5,-1.3) {okno w~zbiorze treningowym};
+    \node[cell, fill=cTest, minimum width=4mm, minimum height=4mm] (lv) at (7.5,-1.3) {};
+    \node[anchor=west, font=\scriptsize] at (7.8,-1.3) {okno w~zbiorze testowym};
+\end{tikzpicture}

@@ -1,0 +1,28 @@
+% Diagram: jedna próbka stanu pojazdu (10 Hz) rozsyłana równolegle do trzech
+% niezależnych odbiorców — gwarancja spójności danych między modułami.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    >=Stealth
+]
+    \definecolor{cSrc}{HTML}{475569}   % źródło próbki — ciemny szary
+    \definecolor{cDevice}{HTML}{2563EB}
+    \definecolor{cML}{HTML}{7C3AED}
+    \definecolor{cStore}{HTML}{B45309}
+
+    \tikzset{
+        blk/.style={draw=#1, line width=1pt, rounded corners=4pt, align=center,
+                    fill=#1!8, text width=3.1cm, minimum height=11mm, inner sep=3pt,
+                    preaction={fill=black!40, opacity=0.25,
+                    transform canvas={xshift=0.4mm, yshift=-0.4mm}}}
+    }
+
+    \node[blk=cSrc] (src) at (0,0) {próbka stanu pojazdu\\(co 100~ms)};
+
+    \node[blk=cStore] (rej) at (5.5,2.0)  {rejestrator (plik CSV na karcie SD)};
+    \node[blk=cML]    (mod) at (5.5,0)    {moduł predykcji modelu};
+    \node[blk=cDevice](sta) at (5.5,-2.0) {moduł statystyk oszczędności};
+
+    \draw[-{Stealth[length=2.4mm]}, line width=0.9pt, cStore]  (src.east) -- ++(0.6,0) |- (rej.west);
+    \draw[-{Stealth[length=2.4mm]}, line width=0.9pt, cML]     (src.east) -- (mod.west);
+    \draw[-{Stealth[length=2.4mm]}, line width=0.9pt, cDevice] (src.east) -- ++(0.6,0) |- (sta.west);
+\end{tikzpicture}
