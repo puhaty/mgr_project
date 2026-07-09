@@ -40,10 +40,7 @@ prędkość obrotową silnika, położenia pedałów oraz zużycie paliwa. Drugi
 opracowane urządzenie pokładowe, pełniące jednocześnie rolę jednostki
 obliczeniowej i panelu kierowcy. Trzecim środowiskiem jest komputer klasy PC,
 na którym odbywa się przygotowanie danych oraz trening
-modeli uczenia maszynowego. Podział ten odpowiada typowemu cyklowi budowy
-systemów uczenia maszynowego dla urządzeń wbudowanych: ze względu na
-ograniczone zasoby mikrokontrolera trening modelu przeprowadza się na
-komputerze, natomiast na urządzeniu docelowym osadzany jest wyłącznie wynikowy,
+modeli uczenia maszynowego; na urządzenie docelowe trafia wyłącznie wynikowy,
 zoptymalizowany klasyfikator.
 
 Praca systemu przebiega w dwóch fazach, których zestawienie zawiera
@@ -74,16 +71,17 @@ być stale rozbudowywany, a model --- doskonalony w kolejnych iteracjach.
     \end{tabular}
 \end{table}
 
-Fazy te nie są przy tym rozłączne w czasie --- tworzą cykl, w którym dane
-zebrane w fazie akwizycji umożliwiają wytrenowanie modelu, ten trafia do
-oprogramowania urządzenia pracującego w fazie eksploatacji, a rejestracja
-kontynuowana w tej fazie zasila kolejną iterację treningu. Cykl ten
-przedstawiono na rysunku~\ref{fig:cykl-faz}.
+Fazy te są ze sobą powiązane przepływem danych, przedstawionym na
+rysunku~\ref{fig:cykl-faz}: nagrania zebrane w fazie akwizycji posłużyły do
+wytrenowania modelu wdrożonego w oprogramowaniu urządzenia. W docelowym
+systemie funkcja rejestracji pozostaje aktywna również w fazie eksploatacji,
+działając równolegle do bieżącej oceny stylu jazdy --- gromadzone w ten
+sposób dane mogą dalej służyć doskonaleniu modelu.
 
 \begin{figure}[!h]
     \centering
     \resizebox{0.85\linewidth}{!}{\input{tex/fig/cykl-faz.tikz}}
-    \caption{Iteracyjny cykl pomiędzy fazą akwizycji danych, treningiem modelu i fazą eksploatacji.}
+    \caption{Przepływ danych między fazą akwizycji, treningiem modelu i fazą eksploatacji urządzenia.}
     \label{fig:cykl-faz}
 \end{figure}
 
@@ -109,21 +107,19 @@ po wykryciu braku aktywności na magistrali.
 \begin{figure}[!h]
     \centering
     \resizebox{\linewidth}{!}{\input{tex/fig/architektura.tikz}}
-    \caption{Schemat blokowy architektury systemu wraz z pętlą rozwoju modelu.}
+    \caption{Schemat blokowy architektury systemu wraz z procesem rozwoju modelu.}
     \label{fig:architektura}
 \end{figure}
 
-Ogniwem spinającym obie fazy jest iteracyjny cykl rozwoju modelu. Zebrane
-nagrania przenoszone są do środowiska treningowego, gdzie po oczyszczeniu
-i etykietowaniu służą do wytrenowania klasyfikatorów; wybrany model jest
-następnie eksportowany do postaci statycznego kodu w języku C i dołączany do
-oprogramowania urządzenia na etapie kompilacji. Walidacja podczas rzeczywistych
-przejazdów dostarcza wniosków --- oraz kolejnych danych --- do następnej
-iteracji. Architekturę oprogramowania zaprojektowano przy tym tak, aby wymiana
-modelu sprowadzała się do podmiany wygenerowanych plików nagłówkowych i nie
-wymagała zmian w logice aplikacji; w toku prac pozwoliło to na równoległe
-utrzymywanie i porównywanie w jeździe dwóch wariantów klasyfikatora, opisanych
-szerzej w podrozdziale~\ref{sec:trening}.
+Obie fazy łączy proces rozwoju modelu: zebrane nagrania przenoszone są do
+środowiska treningowego, gdzie po oczyszczeniu i etykietowaniu służą do
+wytrenowania klasyfikatorów; wybrany model jest następnie eksportowany do
+postaci statycznego kodu w języku C i dołączany do oprogramowania urządzenia
+na etapie kompilacji. Architekturę oprogramowania zaprojektowano przy tym tak,
+aby wymiana modelu sprowadzała się do podmiany wygenerowanych plików
+nagłówkowych i nie wymagała zmian w logice aplikacji; pozwoliło to na
+równoległe utrzymywanie i porównanie w jeździe dwóch wariantów klasyfikatora,
+opisanych szerzej w podrozdziale~\ref{sec:trening}.
 
 %---------------------------------------------------------------
 \subsection{Platforma sprzętowa}
@@ -168,11 +164,7 @@ Wymienione wymagania spełnia w całości pojedynczy moduł
 ESP32-S3-Touch-LCD-4.3B firmy Waveshare~\cite{waveshare2024}, integrujący na
 jednej płytce układ SoC, wyświetlacz z panelem dotykowym, transceiver CAN,
 slot karty pamięci, układ RTC oraz moduł łączności bezprzewodowej.
-Zastosowanie jednego, gotowego modułu --- zamiast zestawu odrębnych podzespołów
-łączonych na płytce prototypowej --- ograniczyło liczbę połączeń
-podatnych na awarie w warunkach eksploatacji w pojeździe (wibracje, wahania
-temperatury) oraz skróciło czas potrzebny na uruchomienie sprzętowej części
-projektu. Rdzeniem modułu jest układ ESP32-S3~\cite{espressif_s3_ds} ---
+Rdzeniem modułu jest układ ESP32-S3~\cite{espressif_s3_ds} ---
 dwurdzeniowy mikrokontroler z rdzeniami Xtensa~LX7 taktowanymi do 240~MHz,
 z wbudowaną obsługą Wi-Fi i Bluetooth~LE, uzupełniony o 8~MB pamięci PSRAM
 i 16~MB pamięci Flash, co zapewnia zasoby wystarczające zarówno do
@@ -236,7 +228,7 @@ bezpieczeństwo odbioru danych oraz odporność na wartości nieprawidłowe.
 Odbiór ramek realizowany jest z użyciem kontrolera TWAI (ang. \emph{Two-Wire
 Automotive Interface}), wbudowanego w układ ESP32-S3 i połączonego ze
 sprzętowym transceiverem CAN modułu (p.~\ref{sec:platforma}). Kontroler
-skonfigurowano w trybie wyłącznie nasłuchującym (\texttt{TWAI\_MODE\_LISTEN\_ONLY}),
+skonfigurowano w trybie wyłącznie nasłuchującym,
 w którym urządzenie odbiera ramki, lecz nie generuje na magistrali potwierdzeń
 ani nie może przy błędzie transmisji wymusić stanu \emph{błędu pasywnego} czy
 wysłać własnych ramek --- zgodnie z wymaganiem, aby rejestrator w żaden sposób
@@ -258,11 +250,10 @@ właściwym dla danego identyfikatora. Zestawienie rozpoznawanych sygnałów, ic
 identyfikatorów oraz sposobu skalowania wartości surowych przedstawia
 tabela~\ref{tab:sygnaly-can} --- kolumna ostatnia wskazuje jednocześnie nazwę
 kolumny, pod jaką dany sygnał trafia do pliku CSV opisanego
-w podrozdziale~\ref{sec:zapis-danych}. Każdy sygnał poddawany jest walidacji:
-producent pojazdu koduje brak wiarygodnej wartości (np. z powodu chwilowej
-awarii czujnika) rezerwując dla niej wartość maksymalną możliwą do zapisania
-na danej liczbie bitów (np. \texttt{0xFF} dla pola 8-bitowego,
-\texttt{0xFFFF} dla pola 16-bitowego); taka wartość jest odrzucana, a pole
+w podrozdziale~\ref{sec:zapis-danych}. Odbierane sygnały są poddawane
+walidacji: dla każdego parametru wyznaczony jest zakres poprawnych wartości,
+a wartość \texttt{0xFF} (odpowiednio \texttt{0xFFFF} dla pól 16-bitowych)
+oznacza brak danych lub wartość nieprawidłową i jest odrzucana, a pole
 zachowuje swoją ostatnią poprawną wartość.
 
 \begin{table}[!h]
@@ -304,7 +295,7 @@ uruchomienia.
 
 Zapis do pliku CSV odbywa się ze stałą częstotliwością 10~Hz (zadanie
 rejestrujące budzone jest co 100~ms), zgodną z częstotliwością próbkowania
-zakładaną w notebookach przygotowujących dane uczące
+zakładaną przy przygotowaniu danych uczących
 (podrozdział~\ref{sec:dane}). To samo zadanie, korzystając z tego samego
 100-milisekundowego odczytu stanu pojazdu, zasila jednocześnie moduł predykcji
 modelu uczenia maszynowego (podrozdział~\ref{sec:implementacja}), dzięki czemu
@@ -358,8 +349,8 @@ w podrozdziale~\ref{sec:akwizycja}, w rzeczywistych warunkach ruchu
 drogowego. Surowe nagrania CSV nie nadają się bezpośrednio do treningu ---
 wymagają ujednolicenia siatki czasowej, odrzucenia fragmentów nieistotnych
 dla oceny stylu jazdy oraz przekształcenia w cechy opisujące zachowanie
-kierowcy w kolejnych przedziałach czasu. Proces ten, przeprowadzany
-w notebooku \texttt{ML\_driving\_style.ipynb}, opisano w kolejnych punktach.
+kierowcy w kolejnych przedziałach czasu. Proces ten opisano w kolejnych
+punktach.
 
 \subsubsection{Czyszczenie danych i resampling}
 
@@ -370,8 +361,8 @@ zdarzeniowa --- poszczególne sygnały nadawane są z różną częstotliwości�
 a wartość utrzymuje się do nadejścia kolejnej ramki --- dane sprowadzane są
 do stałej siatki czasowej 10~Hz (krok 100~ms) metodą \emph{forward-fill}:
 brakujące próbki na siatce wypełniane są ostatnią znaną wartością sygnału.
-Tej samej metody używa się dla narastającego licznika zużycia paliwa
-(\texttt{fuel\_cons}), który z natury zmienia się w sposób skokowy.
+Tej samej metody używa się dla narastającego licznika zużycia paliwa, który
+z natury zmienia się w sposób skokowy.
 
 Po sprowadzeniu do wspólnej siatki dane filtrowane są zgodnie z regułami
 odpowiadającymi tym stosowanym przez model bezpośrednio na urządzeniu
@@ -433,8 +424,8 @@ położenia pedałów, przyspieszenia i szarpnięcia w obrębie okna.
     \end{tabular}
 \end{table}
 
-Rozróżnienie cech \texttt{a\_mean} i \texttt{abs\_a\_mean} jest przy tym
-istotne: przyspieszenie ze znakiem uśrednia się w typowym oknie w pobliżu
+Rozróżnienie cech \texttt{a\_mean} i \texttt{abs\_a\_mean} (tabela~\ref{tab:cechy})
+jest przy tym istotne: przyspieszenie ze znakiem uśrednia się w typowym oknie w pobliżu
 zera (fazy przyspieszania i hamowania częściowo się znoszą), podczas gdy jego
 wartość bezwzględna pozwala odróżnić jazdę dynamiczną od spokojnej niezależnie
 od tego, czy przeważały w niej przyspieszenia, czy hamowania. Dla porównania
@@ -466,13 +457,13 @@ dynamikę jazdy.
 
 Pozostałe okna --- niespełniające żadnego z warunków agresywnej jazdy ---
 klasyfikowane są na podstawie rzeczywistego zużycia paliwa w przeliczeniu na
-100~km (\texttt{l\_per\_100km}), wyznaczanego z różnicy wskazań licznika
-paliwa oraz przejechanego dystansu w oknie; wielkość ta służy wyłącznie do
-nadania etykiety i nie wchodzi w skład wektora cech modelu. Ponieważ zużycie
-paliwa silnie zależy od zakresu prędkości, progi klasyfikacji eco/normal
-wyznaczono osobno dla trzech zakresów (tabela~\ref{tab:progi-paliwo}): jako
-25. percentyl (\emph{eco}) i medianę (\emph{normal}) rozkładu
-\texttt{l\_per\_100km} w oknach z wiarygodnym odczytem paliwa. Okna
+100~km, wyznaczanego z różnicy wskazań licznika paliwa oraz przejechanego
+dystansu w oknie; wielkość ta służy wyłącznie do nadania etykiety i nie
+wchodzi w skład wektora cech modelu. Ponieważ zużycie paliwa silnie zależy od
+zakresu prędkości, progi klasyfikacji eco/normal wyznaczono osobno dla trzech
+zakresów (tabela~\ref{tab:progi-paliwo}): jako 25. percentyl (\emph{eco})
+i medianę (\emph{normal}) rozkładu zużycia paliwa w oknach z wiarygodnym
+odczytem paliwa. Okna
 o zużyciu pomiędzy tymi progami stanowią pas marginesu i są odrzucane ze
 zbioru uczącego jako niejednoznaczne --- w cechach kinematycznych przypominają
 jazdę ekonomiczną, mimo wyższego rzeczywistego zużycia paliwa.
@@ -517,66 +508,551 @@ przy podziale na zbiór treningowy i testowy (podrozdział~\ref{sec:trening}).
 \subsection{Trening i wybór modelu uczenia maszynowego}
 \label{sec:trening}
 
-% TODO: 1-2 zdania wprowadzające (kryteria: dokładność + ograniczenia
-% platformy wbudowanej: pamięć, czas predykcji).
+Na podstawie przygotowanego zbioru okien czasowych (podrozdział~\ref{sec:dane})
+wytrenowano i porównano dwa warianty modelu klasyfikującego styl jazdy. Oba
+warianty należą do tej samej rodziny algorytmów --- zespołów drzew
+decyzyjnych z pakietu scikit-learn --- i operują na identycznym zestawie
+20 cech, co pozwoliło ograniczyć porównanie wyłącznie do wpływu samego
+algorytmu uczącego na jakość klasyfikacji.
 
 \subsubsection{Wybór klasy algorytmów}
-% TODO: przegląd algorytmów pod kątem urządzeń wbudowanych, uzasadnienie
-% wyboru zespołów drzew decyzyjnych (ExtraTrees, RandomForest); ograniczenia
-% hiperparametrów pod ESP32 (60 drzew, głębokość 7).
+
+Jako kandydatów przetestowano \texttt{ExtraTreesClassifier} oraz
+\texttt{RandomForestClassifier}. Oba modele trenowano z tymi samymi
+hiperparametrami, zestawionymi w tabeli~\ref{tab:hiperparametry}. Liczbę
+drzew i głębokość ograniczono z wyjściowych wartości 80 i 8 do 60 i 7, co
+zmniejszyło rozmiar generowanego pliku nagłówkowego C o ok. 25\% przy
+minimalnej stracie dokładności. Wytrenowany model eksportowany jest do
+statycznego kodu w języku C narzędziem \texttt{emlearn}~\cite{emlearn},
+obsługującym m.in. zespoły drzew decyzyjnych wytrenowane w scikit-learn.
+
+\begin{table}[!h]
+    \centering
+    \caption{Wspólne hiperparametry porównywanych modeli.}
+    \label{tab:hiperparametry}
+    \begin{tabular}{| l | c |} \hline
+        \textbf{Parametr} & \textbf{Wartość} \\ \hline\hline
+        Liczba drzew                                & 60 \\ \hline
+        Maksymalna głębokość drzewa                  & 7 \\ \hline
+        Minimalna liczba próbek w liściu              & 12 \\ \hline
+        Liczba cech losowanych przy podziale węzła     & $\sqrt{n}$ (pierwiastek z~liczby cech) \\ \hline
+        Ważenie klas                                  & odwrotnie proporcjonalne do liczebności klasy \\ \hline
+    \end{tabular}
+\end{table}
 
 \subsubsection{Trening i walidacja modeli}
-% TODO: podział zbioru GroupShuffleSplit/GroupKFold grupowany po przejazdach,
-% porównanie ExtraTrees vs RandomForest, macierze pomyłek, analiza błędnych
-% klasyfikacji i ważności cech; wybór modelu docelowego (RandomForest).
+
+Zbiór 21\,725 okien podzielono na część treningową i testową funkcją
+\texttt{GroupShuffleSplit} (25\% na test) grupowaną po pliku źródłowym
+przejazdu, dzięki czemu okna z tego samego przejazdu --- silnie ze sobą
+skorelowane w czasie --- nie mogły jednocześnie trafić do zbioru treningowego
+i testowego. Podział dał 14\,515 okien treningowych (31 plików) oraz
+7\,210 okien testowych (11 plików). Parametry kwantyzacji (skalowanie do
+zakresu $-30000$ -- $30000$) dopasowano wyłącznie na zbiorze treningowym
+i zastosowano bez ponownego dopasowania do zbioru testowego.
+
+Wyniki klasyfikacji modelu RandomForest na zbiorze testowym zestawiono
+w tabeli~\ref{tab:wyniki-test}. Uzyskano dokładność zbalansowaną
+(\emph{balanced accuracy}) 95,4\% oraz makro-uśrednioną miarę F1 na
+poziomie 94,1\%. Klasa \emph{aggressive} rozpoznawana jest niemal bezbłędnie
+(pełna precyzja, żadne okno neutralne ani ekonomiczne nie zostało błędnie
+zaklasyfikowane jako agresywne), natomiast rozróżnienie klas \emph{eco} oraz
+\emph{normal} jest zadaniem trudniejszym, o czym świadczy niższa precyzja
+klasy \emph{eco} (81,9\%). Macierz pomyłek (tabela~\ref{tab:macierz-pomylek})
+potwierdza ten wzorzec: pomyłki koncentrują się niemal wyłącznie między klasami
+\emph{normal} i \emph{eco}, a klasa \emph{aggressive} praktycznie nie miesza
+się z pozostałymi dwiema.
+
+\begin{table}[!h]
+    \centering
+    \caption{Wyniki klasyfikacji modelu RandomForest na zbiorze testowym.}
+    \label{tab:wyniki-test}
+    \begin{tabular}{| l | c | c | c | r |} \hline
+        \textbf{Klasa} & \textbf{Precyzja} & \textbf{Czułość} & \textbf{F1} & \textbf{Liczność} \\ \hline\hline
+        aggressive & 100,0\% & 96,3\% & 98,1\% & 1690 \\ \hline
+        eco        & 81,9\%  & 97,4\% & 89,0\% & 1585 \\ \hline
+        normal     & 98,4\%  & 92,5\% & 95,3\% & 3935 \\ \hline
+        \hline
+        \textbf{dokładność ogólna} & \multicolumn{3}{c|}{94,4\%} & 7210 \\ \hline
+        \textbf{balanced accuracy} & \multicolumn{3}{c|}{95,4\%} & --- \\ \hline
+        \textbf{makro F1} & \multicolumn{3}{c|}{94,1\%} & --- \\ \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[!h]
+    \centering
+    \caption{Macierz pomyłek modelu RandomForest na zbiorze testowym (liczba okien).}
+    \label{tab:macierz-pomylek}
+    \begin{tabular}{| l | c | c | c |} \hline
+        \multirow{2}{*}{\textbf{Klasa rzeczywista}} & \multicolumn{3}{c|}{\textbf{Klasa przewidziana}} \\ \cline{2-4}
+         & normal & eco & aggressive \\ \hline\hline
+        normal     & 3639 & 296  & 0    \\ \hline
+        eco        & 42   & 1543 & 0    \\ \hline
+        aggressive & 18   & 45   & 1627 \\ \hline
+    \end{tabular}
+\end{table}
+
+Stabilność obu porównywanych algorytmów zweryfikowano dodatkowo 5-krotną
+walidacją krzyżową \texttt{GroupKFold}, w której każdy fold zawiera inny
+podzbiór plików źródłowych. Wyniki, zestawione w tabeli~\ref{tab:cv}, wskazują
+na wyraźną przewagę modelu RandomForest --- zarówno pod względem średniej
+jakości klasyfikacji, jak i znacznie mniejszego rozrzutu wyników między
+foldami, co świadczy o mniejszej wrażliwości na konkretny podział danych. Na
+tej podstawie do dalszej pracy oraz do osadzenia w oprogramowaniu urządzenia
+wybrano model RandomForest.
+
+\begin{table}[!h]
+    \centering
+    \caption{Wyniki 5-krotnej walidacji krzyżowej GroupKFold: ExtraTrees vs~RandomForest.}
+    \label{tab:cv}
+    \begin{tabular}{| l | c | c |} \hline
+        \textbf{Model} & \textbf{Balanced accuracy} & \textbf{Makro F1} \\ \hline\hline
+        ExtraTrees   & 87,7\% $\pm$ 4,4~pp & 86,0\% $\pm$ 4,3~pp \\ \hline
+        RandomForest & 96,5\% $\pm$ 1,3~pp & 95,2\% $\pm$ 0,7~pp \\ \hline
+    \end{tabular}
+\end{table}
+
+Ważność poszczególnych cech dla wytrenowanego modelu RandomForest, zestawiona
+w tabeli~\ref{tab:waznosc-cech}, wskazuje, że o klasyfikacji stylu jazdy
+decydują przede wszystkim cechy związane z prędkością i obrotami silnika, przy
+istotnym udziale średniego przyspieszenia oraz gwałtowności wciskania pedału
+gazu.
+
+\begin{table}[!h]
+    \centering
+    \caption{Dziesięć najważniejszych cech modelu RandomForest.}
+    \label{tab:waznosc-cech}
+    \begin{tabular}{| c | l | c |} \hline
+        \textbf{Lp.} & \textbf{Cecha} & \textbf{Ważność} \\ \hline\hline
+        1  & \texttt{speed\_mean}    & 25,8\% \\ \hline
+        2  & \texttt{speed\_p95}     & 15,1\% \\ \hline
+        3  & \texttt{rpm\_mean}      & 12,8\% \\ \hline
+        4  & \texttt{rpm\_p95}       & 8,2\%  \\ \hline
+        5  & \texttt{a\_mean}        & 7,8\%  \\ \hline
+        6  & \texttt{throttle\_dp95} & 7,2\%  \\ \hline
+        7  & \texttt{throttle\_mean} & 5,1\%  \\ \hline
+        8  & \texttt{a\_p05}         & 3,6\%  \\ \hline
+        9  & \texttt{a\_p95}         & 3,6\%  \\ \hline
+        10 & \texttt{throttle\_p95}  & 3,3\%  \\ \hline
+    \end{tabular}
+\end{table}
 
 \subsubsection{Eksport modelu do kodu C}
-% TODO: narzędzie emlearn (statyczny kod C), kwantyzacja cech do int16
-% (parametry MinMaxScaler w JSON -> generowany nagłówek feature_params.h),
-% rozważane alternatywy (ONNX, TensorFlow Lite).
+
+Wytrenowany model RandomForest (60 drzew, głębokość 7, łącznie 6034 węzły)
+eksportowany jest narzędziem \texttt{emlearn} do postaci statycznego kodu
+w języku C, w którym struktura drzew zapisana jest jako tablice stałych, bez
+zależności od żadnej biblioteki uczenia maszynowego w czasie działania
+programu. Równolegle zapisywana jest kolejność cech oraz parametry skalowania
+(\texttt{MinMaxScaler}) wyznaczone na zbiorze treningowym. Dane te
+przetwarzane są automatycznie na etapie kompilacji oprogramowania do postaci
+gotowych tablic współczynników skalujących, wykorzystywanych bezpośrednio
+przez moduł inferencji opisany w podrozdziale~\ref{sec:implementacja}.
+Rozważane
+były również formaty pośrednie ONNX oraz TensorFlow Lite, wymienione już
+w rozdziale poświęconym wymaganiom projektowym, jednak w praktyce do eksportu
+obu wytrenowanych modeli wykorzystano \texttt{emlearn}.
 
 %---------------------------------------------------------------
 \subsection{Implementacja systemu na platformie docelowej}
 \label{sec:implementacja}
 
-% TODO: 1-2 zdania wprowadzające (struktura oprogramowania: moduły, taski
-% FreeRTOS, pętla główna).
+Oprogramowanie urządzenia zrealizowano jako aplikację działającą pod kontrolą
+systemu czasu rzeczywistego FreeRTOS, podzieloną na współpracujące moduły
+odpowiedzialne za poszczególne funkcje systemu: akwizycję i rejestrację
+danych (podrozdział~\ref{sec:akwizycja}), lokalną predykcję modelu uczenia
+maszynowego oraz naliczanie statystyk oszczędności, opisane w niniejszym
+podrozdziale, a także warstwę graficzną, opisaną w
+podrozdziale~\ref{sec:ui}.
 
 \subsubsection{Struktura oprogramowania}
-% TODO: podział na moduły (can, sd_card, ai_model, eco_stats, rtc_manager,
-% wifi_manager, ui), zadania FreeRTOS i synchronizacja (mutex LVGL),
-% wspólny task próbkujący 10 Hz karmiący logger i model.
+
+Odpowiedzialności rozdzielono pomiędzy moduły zestawione w
+tabeli~\ref{tab:moduly}, z których każdy odpowiada za spójny, niezależny
+fragment funkcjonalności urządzenia. Współbieżność zapewniają trzy
+niezależne wątki systemu FreeRTOS: pętla główna, obsługująca odbiór ramek
+z magistrali CAN oraz cykliczne odświeżanie interfejsu; dedykowane zadanie
+próbkujące, uruchamiane co 100~ms (10~Hz), które odczytuje bieżący stan
+pojazdu i przekazuje tę samą próbkę równolegle do rejestratora danych, modułu
+predykcji modelu oraz modułu statystyk oszczędności; a także zadanie
+odświeżające warstwę graficzną. Dostęp do obiektów interfejsu graficznego,
+współdzielonych między wątkami, chroniony jest rekurencyjnym muteksem ---
+każda operacja modyfikująca ekran, niezależnie od tego, z którego wątku jest
+wywoływana, musi najpierw uzyskać tę blokadę.
+
+\begin{table}[!h]
+    \centering
+    \caption{Moduły oprogramowania i ich odpowiedzialność.}
+    \label{tab:moduly}
+    \begin{tabular}{| p{3.6cm} | p{9.3cm} |} \hline
+        \textbf{Moduł} & \textbf{Odpowiedzialność} \\ \hline\hline
+        Akwizycja CAN & odbiór, parsowanie i walidacja ramek z~magistrali CAN \\ \hline
+        Rejestracja danych & zapis próbek do pliku CSV na karcie SD, sterowanie nagrywaniem \\ \hline
+        Inferencja modelu & ekstrakcja cech, kwantyzacja, predykcja stylu jazdy, punktacja i~grywalizacja \\ \hline
+        Statystyki oszczędności & naliczanie oszczędności paliwa i~kosztów eksploatacyjnych, trwałość liczników \\ \hline
+        Zegar czasu rzeczywistego & odczyt i~zapis układu RTC, synchronizacja zegara systemowego \\ \hline
+        Łączność bezprzewodowa & połączenie z~siecią Wi-Fi, synchronizacja czasu przez~NTP \\ \hline
+        Interfejs użytkownika & ekrany, style i~obsługa zdarzeń dotykowych (biblioteka LVGL) \\ \hline
+    \end{tabular}
+\end{table}
 
 \subsubsection{Inferencja w czasie rzeczywistym}
-% TODO: bufor cykliczny 50 próbek (5 s @ 10 Hz), obliczanie cech w C
-% zgodne 1:1 z notebookiem (percentyle, std populacyjne), kwantyzacja,
-% predykcja, filtry lustrzane do treningu (zapłon, bieg wsteczny, postój);
-% wskaźnik punktowy 0-1000 z asymetrią (eco +2, aggressive -4, loss aversion).
+
+Moduł predykcji utrzymuje bufor cykliczny obejmujący 50 ostatnich próbek
+(5~s przy częstotliwości próbkowania 10~Hz), a więc dokładnie taki sam
+horyzont czasowy jak okno czasowe zastosowane przy przygotowaniu danych
+uczących (podrozdział~\ref{sec:dane}). Po każdej nowej próbce wyznaczany jest
+komplet 20 cech statystycznych, obliczanych bezpośrednio na urządzeniu
+dokładnie tą samą metodą co na etapie przygotowania danych (te same wzory percentyla oraz
+odchylenia standardowego), a przed każdą predykcją stosowane są te same
+filtry, co przy przygotowaniu danych uczących: włączony zapłon, brak biegu
+wstecznego oraz prędkość powyżej progu odpowiadającego postojowi. Jedną
+różnicą względem przygotowania danych uczących jest częstotliwość
+wyznaczania kolejnych okien: podczas gdy w zbiorze uczącym kolejne okna
+przesuwane były co 2,5~s, na urządzeniu nowa predykcja wyznaczana jest przy
+każdej nowej próbce, a więc co 100~ms, na bieżąco przesuwanym oknie ---
+co zapewnia możliwie najkrótsze opóźnienie reakcji interfejsu na zmianę
+stylu jazdy. Wyznaczony wektor cech poddawany jest tej samej kwantyzacji do
+liczb całkowitych, z użyciem parametrów wyznaczonych na zbiorze treningowym
+(podrozdział~\ref{sec:trening}), po czym klasyfikowany jest przez osadzony
+model drzewiasty.
+
+Wynik klasyfikacji aktualizuje wewnętrzny wskaźnik postępu, rosnący przy
+jeździe ekonomicznej i malejący przy jeździe agresywnej, zgodnie z zasadą
+nudgingu stawiającą na nagradzanie jazdy ekonomicznej zamiast sygnalizowania
+błędów. Kierowcy wskaźnik ten nie jest prezentowany w postaci liczby ---
+w warstwie graficznej wizualizowany jest jako rosnące drzewo oraz sad
+zebranych drzew, co szczegółowo opisano w podrozdziale~\ref{sec:ui}.
 
 \subsubsection{Moduł statystyk oszczędności}
-% TODO: samokalibrujący się baseline l/100km per styl jazdy, kontrfaktyczne
-% wyliczanie oszczędności paliwa i kosztów eksploatacyjnych (ostre hamowania,
-% gwałtowne przyspieszenia, czas na wysokich obrotach), emisja CO2,
-% persystencja liczników w NVS.
+
+Prezentowane kierowcy oszczędności wyliczane są w sposób kontrfaktyczny:
+urządzenie porównuje rzeczywiste zużycie paliwa i częstość zdarzeń
+eksploatacyjnych zarejestrowane podczas jazdy ekonomicznej z tymi
+zarejestrowanymi podczas jazdy neutralnej, i na tej podstawie szacuje, ile
+kierowca zaoszczędził dzięki fragmentom jazdy sklasyfikowanym jako
+ekonomiczne. Wymaga to najpierw zgromadzenia wystarczającej ilości danych
+osobno dla obu stylów jazdy, aby wyznaczone stawki (zużycie paliwa na
+100~km, częstość zdarzeń na kilometr) nie były oparte na zbyt małej próbce
+--- do czasu osiągnięcia progu kalibracji interfejs pokazuje postęp
+gromadzenia danych zamiast kwoty oszczędności. Stawki te wyznaczane są
+zawsze na podstawie całej dotychczasowej historii jazdy (liczników
+przechowywanych trwale), natomiast przeliczane są na dystans przejechany
+stylem ekonomicznym w wybranym zakresie (bieżący przejazd albo cała
+historia).
+
+Oszczędność paliwa wynika wprost z różnicy stawek zużycia (L/100km) między
+stylem ekonomicznym a neutralnym, pomnożonej przez dystans przejechany
+stylem ekonomicznym i przeliczonej na walutę według ceny paliwa ustawianej
+przez użytkownika. Emisja unikniętego CO2 wyznaczana jest z zaoszczędzonej
+ilości paliwa przy założonym współczynniku emisji. Oszczędności
+eksploatacyjne szacowane są analogicznie, na podstawie liczby unikniętych
+zdarzeń zużywających podzespoły pojazdu --- ostrych hamowań, gwałtownych
+przyspieszeń oraz czasu jazdy na wysokich obrotach silnika --- pomnożonej
+przez przyjęty koszt jednostkowy każdego typu zdarzenia, oszacowany na
+podstawie testów oraz orientacyjnych cen części eksploatacyjnych pojazdu.
+Parametry tego modelu zestawiono w tabeli~\ref{tab:model-oszczednosci}.
+
+\begin{table}[!h]
+    \centering
+    \caption{Parametry modelu oszczędności eksploatacyjnych.}
+    \label{tab:model-oszczednosci}
+    \begin{tabular}{| p{7.8cm} | c |} \hline
+        \textbf{Wielkość} & \textbf{Wartość} \\ \hline\hline
+        Próg kalibracji bazowej (w~każdym z~dwóch stylów) & 10~km \\ \hline
+        Cena paliwa --- wartość domyślna (zakres regulacji) & 6,20 PLN/l (3,00--15,00) \\ \hline
+        Współczynnik emisji CO2 dla benzyny & 2,32~kg/l \\ \hline
+        Próg ostrego hamowania (histereza do $-1{,}5$~m/s$^2$) & $-4{,}0$~m/s$^2$ \\ \hline
+        Próg gwałtownego przyspieszenia (histereza do 1,25~m/s$^2$) & 3,0~m/s$^2$ \\ \hline
+        Próg wysokich obrotów silnika & 3500~obr/min \\ \hline
+        Koszt jednostkowy unikniętego ostrego hamowania & 0,10~PLN \\ \hline
+        Koszt jednostkowy unikniętego gwałtownego przyspieszenia & 0,07~PLN \\ \hline
+        Koszt jednostkowy minuty jazdy na wysokich obrotach & 0,15~PLN/min \\ \hline
+    \end{tabular}
+\end{table}
+
+Liczniki leżące u podstaw tych wyliczeń przechowywane są w dwóch
+egzemplarzach: liczniki obejmujące całą historię jazdy, zapisywane trwale
+w pamięci NVS periodycznie oraz przy każdym wyłączeniu zapłonu, oraz
+liczniki bieżącego przejazdu, zerowane przy starcie urządzenia (które --- jak
+opisano w podrozdziale~\ref{sec:akwizycja} --- zasypia między kolejnymi
+przejazdami, więc start urządzenia odpowiada początkowi przejazdu).
 
 %---------------------------------------------------------------
 \subsection{Interfejs użytkownika}
 \label{sec:ui}
 
-% TODO: 1-2 zdania wprowadzające (cel: czytelność, brak rozpraszania,
-% motywacja zamiast ostrzeżeń).
+Interfejs użytkownika stanowi warstwę, przez którą wyniki analizy stylu
+jazdy, opisanej w poprzednich podrozdziałach, docierają do kierowcy. To
+właśnie ten interfejs decyduje w praktyce o tym, czy cała wcześniej opisana
+praca --- akwizycja danych, przygotowanie zbioru uczącego, trening modelu
+oraz jego osadzenie na urządzeniu --- przełoży się na rzeczywistą zmianę
+zachowania za kierownicą. Zgodnie z celem pracy ma on być czytelny i nie
+rozpraszać uwagi podczas jazdy, a przekaz ma opierać się na nagradzaniu
+jazdy ekonomicznej i intuicyjnej kolorystyce zamiast na ostrzeżeniach
+i komunikatach o błędach.
 
 \subsubsection{Biblioteka graficzna i narzędzia}
-% TODO: LVGL + EEZ Studio, port RGB LCD z dotykiem GT911, organizacja
-% ekranów (pager), wydajność renderowania (PSRAM, framebuffer).
+
+Warstwę graficzną zrealizowano z użyciem biblioteki LVGL, renderującej
+interfejs na wyświetlaczu dotykowym opisanym w podrozdziale~\ref{sec:platforma}.
+Wybór tej platformy sprzętowej, dysponującej pamięcią PSRAM oraz
+pojemnościowym kontrolerem dotyku, umożliwił płynne, animowane przejścia
+(np. animację monety, opisaną dalej) bez zauważalnych spadków płynności
+odświeżania ekranu.
+
+Nawigacja między czterema ekranami interfejsu odbywa się gestem przesunięcia
+palcem w dowolnym miejscu ekranu --- nie tylko na wąskim pasku zakładek ---
+co ułatwia obsługę w warunkach jazdy, gdzie precyzyjne trafienie w mały
+element interfejsu bywa utrudnione. Przesunięcia zawijają się na krańcach
+(z ostatniego ekranu przesunięcie prowadzi z powrotem do pierwszego, i
+odwrotnie), a pasek kropek u dołu ekranu wskazuje aktualną pozycję wśród
+dostępnych ekranów, tak aby kierowca w każdej chwili orientował się, gdzie
+się znajduje, bez konieczności odczytywania etykiet tekstowych. Ekrany
+zaprojektowano tak, aby zapewnić kierowcy dobrą widoczność i czytelność
+prezentowanych treści --- z dużymi, kontrastowymi elementami, czytelnymi
+również w warunkach zmiennego oświetlenia panującego w kabinie pojazdu.
 
 \subsubsection{Mechanizmy nudgingu i gamifikacji}
-% TODO: eko-drzewko (7 stadiów wzrostu, usychanie przy agresji, sad zebranych
-% drzew), poświata krawędzi ekranu w kolorze stylu jazdy, licznik oszczędności
-% z animacją monety; uzasadnienie psychologiczne (nudging, loss aversion,
-% wzmocnienie pozytywne).
+
+Centralnym elementem interfejsu jest wizualizacja bieżącego stylu jazdy
+w postaci rosnącego drzewka. Zamiast liczbowego wskaźnika, który wymagałby
+od kierowcy interpretacji i odrywania uwagi od drogi, prezentowana jest
+roślina przechodząca kolejne, zestawione w tabeli~\ref{tab:etapy-drzewka}
+etapy wzrostu w miarę utrzymywania jazdy ekonomicznej --- od niepozornego
+kiełka, przez kolejne stadia rozwoju, aż po w pełni rozwinięte, kwitnące
+i owocujące drzewo. Postęp jest w ten sposób odczuwalny niemal
+natychmiastowo i nie wymaga żadnej dodatkowej wiedzy do zinterpretowania:
+bujna, kwitnąca roślina jednoznacznie kojarzy się z czymś pozytywnym,
+niezależnie od tego, czy kierowca zna dokładne zasady, według których
+rośnie.
+
+Przedłużająca się seria okien sklasyfikowanych jako agresywne prowadzi
+natomiast do uschnięcia rośliny, którą trzeba następnie
+\mbox{,,odbudować''} ponowną jazdą ekonomiczną. Uschnięcie nie jest przy
+tym prezentowane jako komunikat o błędzie czy ostrzeżenie --- jest to po
+prostu naturalna, wizualna konsekwencja sposobu jazdy, spójna z resztą
+metafory ogrodniczej, w duchu przyjętej w pracy zasady nudgingu. W pełni
+rozwinięte drzewko trafia do rosnącego z czasem sadu zebranych drzew,
+prezentowanego obok aktualnie rosnącej rośliny, a w jego miejscu zaczyna
+rosnąć kolejne, nowe drzewko. Sad, w odróżnieniu od pojedynczej rośliny,
+nie znika ani się nie cofa --- stanowi trwały, z czasem coraz bardziej
+okazały zapis dotychczasowych, dobrych nawyków kierowcy, budowany
+przejazd po przejeździe.
+
+\begin{table}[!h]
+    \centering
+    \caption{Etapy wzrostu wizualizacji eko-drzewka.}
+    \label{tab:etapy-drzewka}
+    \begin{tabular}{| c | l | p{7.5cm} |} \hline
+        \textbf{Etap} & \textbf{Nazwa} & \textbf{Warunek pokazania} \\ \hline\hline
+        0 & uschnięte      & przedłużająca się seria jazdy agresywnej \\ \hline
+        1 & kiełek         & \multirow{6}{7.5cm}{sześć równych, kolejnych przedziałów bieżącego wskaźnika stylu jazdy} \\ \cline{1-2}
+        2 & siewka         &  \\ \cline{1-2}
+        3 & sadzonka       &  \\ \cline{1-2}
+        4 & drzewko dojrzałe &  \\ \cline{1-2}
+        5 & kwitnące       &  \\ \cline{1-2}
+        6 & owocujące (zbiór do sadu) &  \\ \hline
+    \end{tabular}
+\end{table}
+
+\begin{figure}[!h]
+    \centering
+    \begin{minipage}{0.22\linewidth}\centering
+        \includegraphics[width=\linewidth]{eco_tree_0_withered.png}\\[3pt]\footnotesize 0 --- uschnięte
+    \end{minipage}\hfill
+    \begin{minipage}{0.22\linewidth}\centering
+        \includegraphics[width=\linewidth]{eco_tree_1_seed.png}\\[3pt]\footnotesize 1 --- kiełek
+    \end{minipage}\hfill
+    \begin{minipage}{0.22\linewidth}\centering
+        \includegraphics[width=\linewidth]{eco_tree_2_seedling.png}\\[3pt]\footnotesize 2 --- siewka
+    \end{minipage}\hfill
+    \begin{minipage}{0.22\linewidth}\centering
+        \includegraphics[width=\linewidth]{eco_tree_3_sapling.png}\\[3pt]\footnotesize 3 --- sadzonka
+    \end{minipage}
+
+    \vspace{10pt}
+
+    \begin{minipage}{0.22\linewidth}\centering
+        \includegraphics[width=\linewidth]{eco_tree_4_mature.png}\\[3pt]\footnotesize 4 --- dojrzałe
+    \end{minipage}\hfill
+    \begin{minipage}{0.22\linewidth}\centering
+        \includegraphics[width=\linewidth]{eco_tree_5_flowering.png}\\[3pt]\footnotesize 5 --- kwitnące
+    \end{minipage}\hfill
+    \begin{minipage}{0.22\linewidth}\centering
+        \includegraphics[width=\linewidth]{eco_tree_6_fruiting.png}\\[3pt]\footnotesize 6 --- owocujące
+    \end{minipage}
+    \caption{Kolejne etapy wzrostu wizualizacji eko-drzewka.}
+    \label{fig:etapy-drzewka}
+\end{figure}
+
+Dodatkowym, subtelnym sygnałem jest poświata wzdłuż krawędzi ekranu,
+przyjmująca kolor odpowiadający bieżącemu stylowi jazdy --- zielony dla
+jazdy ekonomicznej, czerwony dla agresywnej, niewidoczna przy jeździe
+neutralnej --- zgodnie z przyjętą w pracy zasadą intuicyjnej kolorystyki
+sygnalizującej ocenę jazdy. Rysunki~\ref{fig:poswiata-eco}--\ref{fig:poswiata-aggr}
+zestawiają wszystkie trzy warianty.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{zielona_obwodka_widok_sad.png}
+    \caption{Poświata krawędzi ekranu przy jeździe ekonomicznej (zielona); drzewko w~etapie kwitnącym.}
+    \label{fig:poswiata-eco}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{widok_neutral.png}
+    \caption{Ekran eko-drzewka przy jeździe neutralnej --- poświata krawędzi niewidoczna.}
+    \label{fig:poswiata-neutral}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{czerwona_obwodka_drzewo_uschniete.png}
+    \caption{Poświata krawędzi ekranu przy jeździe agresywnej (czerwona); uschnięte drzewko.}
+    \label{fig:poswiata-aggr}
+\end{figure}
+
+Oszczędności wynikające z jazdy ekonomicznej (podrozdział~\ref{sec:implementacja})
+prezentowane są kierowcy na bieżąco w formie rosnącej kwoty nad drzewkiem,
+a każdemu kolejnemu, zauważalnemu przyrostowi oszczędności towarzyszy krótka
+animacja monety, pokazana na rysunku~\ref{fig:moneta} --- naśladując
+mechanizmy natychmiastowej, namacalnej nagrody typowe dla gier, zgodnie
+z zasadą gamifikacji.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{widok_monety.png}
+    \caption{Animacja monety, towarzysząca kolejnemu przyrostowi oszczędności.}
+    \label{fig:moneta}
+\end{figure}
 
 \subsubsection{Ekrany systemu}
-% TODO: ekran danych bieżących (CAN), ekran eko-drzewka i sadu, ekran
-% statystyk oszczędności, ustawienia (cena paliwa, jasność, nagrywanie,
-% reset); zrzuty ekranu.
+
+Interfejs podzielony jest na cztery ekrany, dostępne w kolejności
+zestawionej w tabeli~\ref{tab:ekrany}. Ekran eko-drzewka, jako główny nośnik
+mechanizmów opisanych powyżej, jest ekranem startowym.
+
+\begin{table}[!h]
+    \centering
+    \caption{Ekrany interfejsu użytkownika.}
+    \label{tab:ekrany}
+    \begin{tabular}{| c | p{3.4cm} | p{8.2cm} |} \hline
+        \textbf{Kolejność} & \textbf{Ekran} & \textbf{Zawartość} \\ \hline\hline
+        1 & eko-drzewko i sad & rosnące drzewko, sad zebranych drzew, poświata krawędzi, kwota oszczędności \\ \hline
+        2 & statystyki oszczędności & oszczędność paliwa i kosztów eksploatacyjnych, uniknięta emisja CO2, udział stylów jazdy, cena paliwa \\ \hline
+        3 & dane bieżące & aktualne wartości sygnałów z magistrali CAN (prędkość, obroty, pedały, paliwo, przebieg i~pozostałe) \\ \hline
+        4 & ustawienia & sterowanie nagrywaniem danych, konfiguracja sieci bezprzewodowej, synchronizacja czasu, jasność ekranu \\ \hline
+    \end{tabular}
+\end{table}
+
+\paragraph{Ekran eko-drzewka i sadu.}
+Ekran podzielony jest na dwie połowy: po lewej stronie znajduje się aktualnie
+rosnące drzewko wraz z pigułką pokazującą bieżącą kwotę oszczędności, po
+prawej --- sad zebranych drzewek. Sad wypełnia się stopniowo w miarę
+zbierania kolejnych w pełni rozwiniętych roślin, a poszczególne drzewka
+rozmieszczone są w nim w sposób nieregularny, przypominający naturalny
+sad, a nie uporządkowaną siatkę. Rysunki~\ref{fig:sad-pusty}--\ref{fig:sad-pelny}
+zestawiają pusty sad na początku korzystania z~urządzenia z~sadem na wczesnym
+etapie jego zapełniania oraz z~sadem rozwiniętym po wielu zebranych
+drzewkach, obrazując tę długoterminową progresję --- od pierwszego,
+jeszcze niepewnego przejazdu, aż po widoczny, zbudowany w czasie efekt
+regularnie utrzymywanej jazdy ekonomicznej.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{widok_poczatkowy_kalibracja.png}
+    \caption{Sad pusty, na początku korzystania z~urządzenia.}
+    \label{fig:sad-pusty}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{screenshot_20260708_104211.png}
+    \caption{Sad na wczesnym etapie zapełniania.}
+    \label{fig:sad-wczesny}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{widok_neutral.png}
+    \caption{Sad znacznie zapełniony po wielu zebranych drzewkach.}
+    \label{fig:sad-pelny}
+\end{figure}
+
+\paragraph{Ekran statystyk oszczędności.}
+Ekran ten rozwija informację skrótowo zasygnalizowaną na ekranie
+eko-drzewka o szczegółowe zestawienie liczbowe. W jego górnej części
+znajduje się przełącznik zakresu --- bieżący przejazd (TRIP) albo cała
+dotychczasowa historia jazdy (TOTAL) --- pozwalający kierowcy spojrzeć
+zarówno na efekt tego, co dzieje się \mbox{,,tu i teraz''}, jak i na
+długoterminowy, skumulowany rezultat. Poniżej, w trzech kartach, rozbita
+jest łączna kwota oszczędności na jej składowe: zaoszczędzone paliwo (w
+litrach i w walucie), szacowane oszczędności eksploatacyjne oraz uniknięta
+emisja CO2. Dalej znajduje się poziomy pasek pokazujący udział poszczególnych
+stylów jazdy w wybranym zakresie czasowym, a także zwięzłe podsumowanie
+sadu (liczba drzewek, liczba zebranych, liczba uschniętych, najdłuższa
+seria zebranych drzewek bez uschnięcia) oraz suwak ceny paliwa, względem
+której przeliczane są oszczędności pieniężne.
+
+Do czasu zebrania wystarczających danych osobno dla stylu ekonomicznego
+i neutralnego (podrozdział~\ref{sec:implementacja}) górna, główna część
+ekranu pokazuje pasek postępu kalibracji zamiast kwoty oszczędności; pozostałe
+elementy ekranu --- udział stylów jazdy oraz podsumowanie sadu --- są
+widoczne od razu, ponieważ nie wymagają kalibracji. Rysunki~\ref{fig:stats-przed}--\ref{fig:stats-po}
+zestawiają oba stany.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{widok_poczatkowy_kalibracja_stats.png}
+    \caption{Ekran statystyk oszczędności przed zakończeniem kalibracji bazowej.}
+    \label{fig:stats-przed}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{widok_stat_po_kalibracji.png}
+    \caption{Ekran statystyk oszczędności po zakończeniu kalibracji bazowej.}
+    \label{fig:stats-po}
+\end{figure}
+
+\paragraph{Ekran danych bieżących.}
+Ekran przedstawia siatkę kafelków z aktualnymi wartościami wszystkich
+sygnałów odbieranych z magistrali CAN i zestawionych wcześniej w
+tabeli~\ref{tab:sygnaly-can} (podrozdział~\ref{sec:akwizycja}): prędkości
+pojazdu, obrotów silnika, położenia pedałów gazu i hamulca, poziomu oraz
+zużycia paliwa, przebiegu, zasięgu, temperatury oleju, stanu biegu
+wstecznego i statusu układu ESP --- pokazaną na rysunku~\ref{fig:can-dane}.
+Choć ekran ten nie pełni bezpośrednio funkcji motywacyjnej, umożliwia
+kierowcy weryfikację, że urządzenie poprawnie odbiera i interpretuje dane
+z pojazdu, na których opiera się cała późniejsza ocena stylu jazdy.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.75\linewidth]{widok_danych_can.png}
+    \caption{Ekran danych bieżących z~magistrali CAN.}
+    \label{fig:can-dane}
+\end{figure}
+
+\paragraph{Ekran ustawień.}
+Ostatni ekran skupia funkcje konfiguracyjne i pomocnicze, podzielone na
+cztery grupy widoczne na rysunku~\ref{fig:ustawienia}. Pierwsza dotyczy
+nagrywania danych na kartę SD (podrozdział~\ref{sec:zapis-danych}) --- w
+trybie ręcznym pozwala rozpocząć i zakończyć zapis oraz pokazuje liczbę
+zapisanych dotychczas rekordów. Druga obejmuje przełącznik trybu
+podświetlenia (automatyczny, podążający za stanem zapłonu, albo ręczny)
+wraz z suwakiem jasności, a także przyciski pozwalające wyczyścić sad oraz
+statystyki oszczędności i rozpocząć ich gromadzenie od nowa. Trzecia grupa
+odpowiada za konfigurację sieci bezprzewodowej --- podgląd stanu połączenia
+oraz pola do wprowadzenia danych logowania. Czwarta dotyczy zegara czasu
+rzeczywistego: wyświetla bieżący, odczytany z niego czas oraz umożliwia
+jego synchronizację z serwerem NTP (podrozdział~\ref{sec:zapis-danych}),
+wraz z jasnym wskazaniem, czy zegar jest aktualnie zsynchronizowany.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.75\linewidth]{ustawienia_sync.png}
+    \caption{Ekran ustawień: nagrywanie danych, sieć bezprzewodowa, synchronizacja czasu, jasność ekranu.}
+    \label{fig:ustawienia}
+\end{figure}
