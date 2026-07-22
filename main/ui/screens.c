@@ -1263,6 +1263,18 @@ void create_screen_screen_main() {
                                                         }
                                                     }
                                                 }
+                                                {
+                                                    // label_ai_model: shows which trained model is compiled in (see
+                                                    // AI_MODEL_VARIANT in ai_model.c); text is set at runtime in
+                                                    // ui_pager_init().
+                                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                                    objects.label_ai_model = obj;
+                                                    lv_obj_set_pos(obj, 0, 0);
+                                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                                    lv_obj_set_style_pad_top(obj, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                                    lv_obj_set_style_pad_left(obj, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                                    lv_label_set_text(obj, "Model: --");
+                                                }
                                             }
                                         }
                                         {

@@ -68,6 +68,7 @@ typedef struct _objects_t {
     lv_obj_t *label_switch;
     lv_obj_t *button_reset_orchard;
     lv_obj_t *button_reset_eco;
+    lv_obj_t *label_ai_model;
     lv_obj_t *slider_brightness;
     lv_obj_t *container_rtc;
     lv_obj_t *label_time_status;

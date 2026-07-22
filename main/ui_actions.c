@@ -279,6 +279,13 @@ void ui_pager_init(void) {
         lv_obj_set_flex_grow(objects.container_rtc, 1);
     }
 
+    // Show which trained model is compiled in (AI_MODEL_VARIANT, ai_model.c).
+    if (objects.label_ai_model != NULL) {
+        char buf[48];
+        snprintf(buf, sizeof(buf), "Model: %s", ai_model_get_variant_name());
+        lv_label_set_text(objects.label_ai_model, buf);
+    }
+
     // Dot indicator overlay at the bottom of the screen.
     lv_obj_t *dots = lv_obj_create(objects.screen_main);
     lv_obj_remove_style_all(dots);

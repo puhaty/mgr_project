@@ -24,7 +24,8 @@
 #define AI_MODEL_VARIANT_RANDOM_FOREST  1
 
 #ifndef AI_MODEL_VARIANT
-#define AI_MODEL_VARIANT  AI_MODEL_VARIANT_EXTRA_TREES
+// #define AI_MODEL_VARIANT  AI_MODEL_VARIANT_EXTRA_TREES
+    #define AI_MODEL_VARIANT  AI_MODEL_VARIANT_RANDOM_FOREST
 #endif
 
 #if AI_MODEL_VARIANT == AI_MODEL_VARIANT_RANDOM_FOREST
@@ -249,6 +250,18 @@ static void ai_orchard_nvs_save(void)
 uint32_t ai_model_get_orchard_count(void)
 {
     return s_orchard_count;
+}
+
+// Name of the model variant baked in at compile time (see AI_MODEL_VARIANT above).
+const char *ai_model_get_variant_name(void)
+{
+#if AI_MODEL_VARIANT == AI_MODEL_VARIANT_RANDOM_FOREST
+    return "Random Forest";
+#elif AI_MODEL_VARIANT == AI_MODEL_VARIANT_EXTRA_TREES
+    return "Extra Trees";
+#else
+    return "Unknown";
+#endif
 }
 
 // Clears all harvested trees (Settings -> Reset orchard). The grid redraws on
