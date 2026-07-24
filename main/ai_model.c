@@ -49,8 +49,10 @@
 #define WIN_SIZE  50
 #define DIFF_SIZE 49  // WIN_SIZE - 1
 
-// Fixed sample period (s) used for per-second derivatives, matching the notebook
-// constant DT = 0.1 (d_throttle_s, d_brake_s, jerk_ms3 are all divided by DT).
+// Nominal sample period (s), used only as the fallback dt before the first real
+// timestamp delta is known. Per-second derivatives (d_throttle_s, d_brake_s,
+// jerk_ms3) use the actual measured dt per sample, not this constant — the
+// sampling task's real period jitters with SD-card write time.
 #define DT_S 0.1f
 
 #define AI_SCORE_MIN   0
@@ -109,6 +111,7 @@
 
 // Ring buffers: indices [0]=speed(km/h) [1]=rpm [2]=throttle [3]=brake [4]=accel(m/s²)
 static float s_buf[5][WIN_SIZE];
+static float s_dt_buf[WIN_SIZE];   // actual elapsed time (s) since the previous sample, per slot
 static int   s_buf_head  = 0;
 static int   s_buf_count = 0;
 
@@ -177,6 +180,7 @@ static const char *TAG = "ai_model";
 
 // Temp arrays (static to stay off the task stack)
 static float s_ord[5][WIN_SIZE];       // ring buffer in temporal order
+static float s_dt_ord[WIN_SIZE];       // s_dt_buf unrolled into temporal order
 static float s_srt[5][WIN_SIZE];       // sorted versions
 static float s_diff[3][DIFF_SIZE];     // [0]=|thr_diff| [1]=|brk_diff| [2]=|jerk|
 static float s_srt_diff[3][DIFF_SIZE]; // sorted versions of s_diff
@@ -276,6 +280,7 @@ void ai_model_reset_orchard(void)
 static void reset_window(void)
 {
     memset(s_buf,   0, sizeof(s_buf));
+    memset(s_dt_buf, 0, sizeof(s_dt_buf));
     s_buf_head   = 0;
     s_buf_count  = 0;
     s_last_ts    = 0;
@@ -306,7 +311,7 @@ void ai_model_process_sample(const can_data_t *data)
         return;
     }
 
-    float dt_s = 0.1f;
+    float dt_s = DT_S;
     if (s_last_ts > 0 && data->timestamp > s_last_ts) {
         dt_s = (float)(data->timestamp - s_last_ts) / 1000.0f;
         if (dt_s < 0.01f) dt_s = 0.01f;
@@ -322,6 +327,7 @@ void ai_model_process_sample(const can_data_t *data)
     s_buf[2][s_buf_head] = (float)data->throttle_pedal;
     s_buf[3][s_buf_head] = (float)data->brake_pedal;
     s_buf[4][s_buf_head] = accel;
+    s_dt_buf[s_buf_head] = dt_s;
     s_buf_head = (s_buf_head + 1) % WIN_SIZE;
     if (s_buf_count < WIN_SIZE) s_buf_count++;
 
@@ -338,16 +344,24 @@ void ai_model_process_sample(const can_data_t *data)
         memcpy(s_srt[b], s_ord[b], WIN_SIZE * sizeof(float));
         qsort(s_srt[b], WIN_SIZE, sizeof(float), float_cmp);
     }
+    for (int i = 0; i < WIN_SIZE; i++) {
+        s_dt_ord[i] = s_dt_buf[(s_buf_head + i) % WIN_SIZE];
+    }
 
-    // Per-second derivatives (divide by DT, matching notebook d_*_s = diff / DT):
+    // Per-second derivatives (matching notebook d_*_s = diff / DT):
     //  [0] d_throttle_s (signed), [1] d_brake_s (signed), [2] |jerk_ms3| (abs)
     // throttle/brake keep their sign — *_dp95 takes the upper tail (sharp presses),
     // so signed vs abs matters when releases are sharper than presses.
-    const float inv_dt = 1.0f / DT_S;
+    // Uses the actual elapsed time between each pair of samples (s_dt_ord[i+1] is
+    // the real dt captured when sample i+1 was written), not a fixed 100ms —
+    // the sampling task's real period jitters with SD-card write time, and a
+    // fixed divisor would systematically over/under-estimate these derivatives
+    // whenever the real interval drifts from the nominal 100ms.
     for (int i = 0; i < DIFF_SIZE; i++) {
-        s_diff[0][i] = (s_ord[2][i + 1] - s_ord[2][i]) * inv_dt;
-        s_diff[1][i] = (s_ord[3][i + 1] - s_ord[3][i]) * inv_dt;
-        s_diff[2][i] = fabsf(s_ord[4][i + 1] - s_ord[4][i]) * inv_dt;
+        float inv_dt_i = 1.0f / s_dt_ord[i + 1];
+        s_diff[0][i] = (s_ord[2][i + 1] - s_ord[2][i]) * inv_dt_i;
+        s_diff[1][i] = (s_ord[3][i + 1] - s_ord[3][i]) * inv_dt_i;
+        s_diff[2][i] = fabsf(s_ord[4][i + 1] - s_ord[4][i]) * inv_dt_i;
     }
     for (int d = 0; d < 3; d++) {
         memcpy(s_srt_diff[d], s_diff[d], DIFF_SIZE * sizeof(float));
