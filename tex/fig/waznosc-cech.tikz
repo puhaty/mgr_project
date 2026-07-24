@@ -8,31 +8,31 @@
 
     % Dane: (etykieta, wartość w %), od najważniejszej do najmniej ważnej.
     \def\dane{
-        {speed\_mean}/25.8,
-        {speed\_p95}/15.1,
-        {rpm\_mean}/12.8,
-        {rpm\_p95}/8.2,
-        {a\_mean}/7.8,
-        {throttle\_dp95}/7.2,
-        {throttle\_mean}/5.1,
-        {a\_p05}/3.6,
-        {a\_p95}/3.6,
-        {throttle\_p95}/3.3
+        {throttle\_dp95}/19.3,
+        {throttle\_mean}/9.4,
+        {speed\_mean}/8.9,
+        {a\_mean}/8.8,
+        {abs\_a\_mean}/8.3,
+        {speed\_p95}/5.3,
+        {a\_std}/5.0,
+        {throttle\_p95}/5.0,
+        {speed\_std}/4.2,
+        {throttle\_std}/4.1
     }
 
-    \def\maxval{26}
+    \def\maxval{20}
     \def\barscale{0.28} % cm na 1 punkt procentowy
     \def\rowheight{0.62}
 
     % Oś pozioma i podpisy.
     \draw[->] (0,0) -- (\maxval*\barscale + 0.5,0) node[right] {\%};
-    \foreach \v in {0,5,...,25} {
+    \foreach \v in {0,5,...,20} {
         \draw (\v*\barscale,0.05) -- (\v*\barscale,-0.05) node[below, font=\scriptsize] {\v};
     }
 
     % Słupki + etykiety cech (rysowane od góry, więc numerujemy od 0 w dół).
     \foreach [count=\i from 0] \featname/\val in \dane {
-        \pgfmathsetmacro{\y}{-(\i)*\rowheight - 0.35}
+        \pgfmathsetmacro{\y}{-(\i)*\rowheight - 1.1}
         \pgfmathsetmacro{\w}{\val*\barscale}
         \fill[cML!85] (0,\y) rectangle (\w,\y+0.42);
         \draw[cML] (0,\y) rectangle (\w,\y+0.42);

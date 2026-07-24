@@ -49,7 +49,7 @@ rejestratora: odbierane z magistrali sygnały są parsowane, walidowane
 i zapisywane na karcie SD w postaci plików CSV ze stałą częstotliwością
 próbkowania 10~Hz. Zgromadzone w ten sposób nagrania rzeczywistych przejazdów
 stanowią zbiór uczący dla modeli klasyfikacji stylu jazdy. W fazie eksploatacji
-urządzenie wykonuje natomiast pełny łańcuch przetwarzania: strumień danych
+urządzenie wykonuje pełny łańcuch przetwarzania: strumień danych
 z magistrali analizowany jest w przesuwnych oknach czasowych, dla których
 wbudowany model wyznacza klasę stylu jazdy, a wynik klasyfikacji przekładany
 jest na informację zwrotną prezentowaną kierowcy. Funkcja rejestracji pozostaje
@@ -65,7 +65,7 @@ być stale rozbudowywany, a model --- doskonalony w kolejnych iteracjach.
         Cel pracy urządzenia & budowa zbioru danych uczących & ocena stylu jazdy w~czasie rzeczywistym \\ \hline
         Źródło danych & magistrala CAN (tryb nasłuchu) & magistrala CAN (tryb nasłuchu) \\ \hline
         Przetwarzanie na urządzeniu & parsowanie i walidacja sygnałów & parsowanie i walidacja sygnałów, ekstrakcja cech, predykcja modelu \\ \hline
-        Główny wynik & pliki CSV na karcie SD & klasa stylu jazdy, wskaźnik punktowy i~informacja zwrotna dla kierowcy \\ \hline
+        Główny wynik & pliki CSV na karcie SD & klasa stylu jazdy i~informacja zwrotna dla kierowcy (wizualizacja eko-drzewka) \\ \hline
         Trening modelu & offline, na komputerze PC & --- (model wbudowany w~oprogramowanie) \\ \hline
         Zapis na kartę SD & tak, 10~Hz & tak (dalsza rozbudowa zbioru) \\ \hline
     \end{tabular}
@@ -90,13 +90,13 @@ rysunku~\ref{fig:architektura}. Ramki CAN odbierane są w trybie wyłącznie
 nasłuchującym, gwarantującym brak ingerencji w komunikację pojazdu, po czym są
 parsowane na podstawie identyfikatorów i składane w spójny obraz bieżącego
 stanu pojazdu. Zadanie próbkujące odczytuje ten stan co 100~ms i przekazuje go
-równolegle do dwóch odbiorców: rejestratora zapisującego dane na karcie SD oraz
+równolegle do rejestratora zapisującego dane na karcie SD oraz do
 modułu inferencji, który utrzymuje przesuwne okno obejmujące ostatnie pięć
 sekund jazdy. Na podstawie zawartości okna wyznaczany jest wektor cech
 statystycznych, poddawany kwantyzacji i klasyfikowany przez osadzony model
-drzewiasty. Wynik klasyfikacji aktualizuje wskaźnik punktowy oraz stan
-mechanizmów grywalizacyjnych, a warstwa graficzna zbudowana z użyciem
-biblioteki LVGL prezentuje je kierowcy. Pracę całości wspierają moduły
+drzewiasty. Wynik klasyfikacji aktualizuje wewnętrzny wskaźnik postępu oraz
+stan mechanizmów grywalizacyjnych, a warstwa graficzna zbudowana z użyciem
+biblioteki LVGL~\cite{lvgl} prezentuje je kierowcy. Pracę całości wspierają moduły
 pomocnicze: układ RTC znakuje dane czasem (z możliwością synchronizacji przez
 sieć bezprzewodową z użyciem protokołu NTP), pamięć NVS przechowuje parametry
 konfiguracyjne oraz liczniki wymagające trwałości między uruchomieniami,
@@ -208,12 +208,12 @@ udało się zrealizować w ramach jednej, zwartej platformy sprzętowej, bez
 potrzeby integrowania dodatkowych komponentów zewnętrznych.
 
 Dostępne zasoby pamięci znajdują odzwierciedlenie w rzeczywistym
-zapotrzebowaniu oprogramowania. Pamięć Flash w całości podzielona jest
-pomiędzy obraz oprogramowania (6~MB) oraz pamięć nieulotną przechowującą
+zapotrzebowaniu oprogramowania. W pamięci Flash wydzielono obszar na obraz
+oprogramowania (6~MB) oraz obszar pamięci nieulotnej przechowującej
 dane konfiguracyjne i liczniki (podrozdział~\ref{sec:implementacja}); w
 obrazie oprogramowania mieści się zarówno wyeksportowany model klasyfikacji
 stylu jazdy (podrozdział~\ref{sec:trening}), jak i grafiki wizualizacji
-eko-drzewka i sadu (podrozdział~\ref{sec:ui}), zajmujące większość tej
+eko-drzewka i sadu (podrozdział~\ref{sec:ui}), zajmujące znaczną część tej
 przestrzeni. Pamięć PSRAM wykorzystywana jest przede wszystkim przez
 bufory ramki obrazu biblioteki LVGL, których rozmiar --- przy rozdzielczości
 wyświetlacza 800$\times$480~px i~16-bitowej głębi koloru --- przekracza
@@ -264,8 +264,9 @@ zaległości przy chwilowym wzroście natężenia ruchu na magistrali.
 
 \subsubsection{Identyfikacja i parsowanie sygnałów pojazdu}
 
-Poszczególne sygnały pojazdu rozpoznawane są na podstawie 32-bitowego
-identyfikatora ramki, a następnie dekodowane zgodnie z układem bajtów danych
+Poszczególne sygnały pojazdu rozpoznawane są na podstawie 29-bitowego
+identyfikatora ramki (format rozszerzony magistrali CAN~\cite{iso11898}),
+a następnie dekodowane zgodnie z układem bajtów danych
 właściwym dla danego identyfikatora. Zestawienie rozpoznawanych sygnałów, ich
 identyfikatorów oraz sposobu skalowania wartości surowych przedstawia
 tabela~\ref{tab:sygnaly-can} --- kolumna ostatnia wskazuje jednocześnie nazwę
@@ -330,8 +331,9 @@ testach systemu poza typowym cyklem jazdy.
 Tabela~\ref{tab:przyklad-csv} przedstawia rzeczywisty fragment jednego
 z zarejestrowanych plików, obejmujący moment przyspieszania pojazdu ---
 widoczny jest wzrost prędkości, obrotów silnika oraz położenia pedału
-przyspieszenia w kolejnych rekordach, a także niewielkie odchylenia
-znacznika czasu od nominalnego kroku 100~ms, charakterystyczne dla
+przyspieszenia w kolejnych rekordach, a także odchylenia znacznika czasu
+od nominalnego kroku 100~ms, rzędu kilkudziesięciu milisekund,
+charakterystyczne dla
 zdarzeniowej natury magistrali CAN (podrozdział~\ref{sec:akwizycja}) ---
 odchylenia te są następnie usuwane przez sprowadzenie do stałej siatki
 czasowej na etapie przygotowania danych (podrozdział~\ref{sec:dane}).
@@ -400,7 +402,7 @@ punktach.
 
 Każdy plik wczytywany jest niezależnie, po czym wiersze o brakujących
 wartościach w kolumnach kluczowych są odrzucane, a rekordy porządkowane
-i deduplikowane względem znacznika czasu. Ponieważ magistrala CAN jest
+i pozbawiane duplikatów względem znacznika czasu. Ponieważ magistrala CAN jest
 zdarzeniowa --- poszczególne sygnały nadawane są z różną częstotliwością,
 a wartość utrzymuje się do nadejścia kolejnej ramki --- dane sprowadzane są
 do stałej siatki czasowej 10~Hz (krok 100~ms) metodą \emph{forward-fill}:
@@ -482,10 +484,7 @@ Rozróżnienie cech \texttt{a\_mean} i \texttt{abs\_a\_mean} (tabela~\ref{tab:ce
 jest przy tym istotne: przyspieszenie ze znakiem uśrednia się w typowym oknie w pobliżu
 zera (fazy przyspieszania i hamowania częściowo się znoszą), podczas gdy jego
 wartość bezwzględna pozwala odróżnić jazdę dynamiczną od spokojnej niezależnie
-od tego, czy przeważały w niej przyspieszenia, czy hamowania. Dla porównania
-zastosowano dwa warianty modelu wykorzystujące dokładnie ten sam zestaw
-i kolejność cech (podrozdział~\ref{sec:trening}), co pozwoliło ograniczyć
-różnice między nimi wyłącznie do algorytmu uczącego.
+od tego, czy przeważały w niej przyspieszenia, czy hamowania.
 
 Zastosowanie okien czasowych zamiast pojedynczych próbek z 45 przejazdów dało
 łącznie 24\,941 okien.
@@ -501,13 +500,14 @@ w ustalonej kolejności --- pierwsza spełniona reguła nadaje etykietę oknu.
 
 Okno klasyfikowane jest jako \emph{agresywne}, jeśli spełniony jest
 którykolwiek z warunków: ostre hamowanie (5. percentyl przyspieszenia poniżej
-$-5{,}8$~m/s$^2$), utrzymana silna dynamika jazdy (średnia wartość bezwzględna
-przyspieszenia powyżej $1{,}30$~m/s$^2$), gwałtowne wciśnięcie pedału gazu
-(95. percentyl jego pochodnej powyżej 140), mocne wciśnięcie pedału hamulca
-(95. percentyl powyżej 180) lub przekroczenie prędkości 120~km/h. Progi te
-dobrano w okolicach 95. percentyla rozkładu odpowiednich cech, tak aby
-kwalifikowały wyłącznie zdarzenia rzeczywiście gwałtowne, nie zaś umiarkowaną
-dynamikę jazdy.
+$-5{,}5$~m/s$^2$), utrzymana silna dynamika jazdy (średnia wartość bezwzględna
+przyspieszenia powyżej $1{,}20$~m/s$^2$), gwałtowne wciśnięcie pedału gazu
+(95. percentyl jego pochodnej powyżej 150) lub mocne wciśnięcie pedału hamulca
+(95. percentyl powyżej 230). Progi te dobrano w okolicach 95. percentyla
+rozkładu odpowiednich cech, tak aby kwalifikowały wyłącznie zdarzenia
+rzeczywiście gwałtowne, nie zaś umiarkowaną dynamikę jazdy; sama wysoka
+prędkość ustabilizowanej jazdy, bez towarzyszących jej gwałtownych zdarzeń
+kinematycznych, nie jest traktowana jako agresywna.
 
 Pozostałe okna --- niespełniające żadnego z warunków agresywnej jazdy ---
 klasyfikowane są na podstawie rzeczywistego zużycia paliwa w przeliczeniu na
@@ -535,10 +535,12 @@ jazdę ekonomiczną, mimo wyższego rzeczywistego zużycia paliwa.
 \end{table}
 
 Zestawienie liczbowe całego procesu przygotowania danych zawiera
-tabela~\ref{tab:podsumowanie-danych}. Ostateczny zbiór uczący objął 21\,725 okien pochodzących z 45 przejazdów.
-Klasy rozłożone są nierównomiernie ---
-z przewagą jazdy neutralnej i agresywnej nad ekonomiczną --- co uwzględniono
-przy podziale na zbiór treningowy i testowy (podrozdział~\ref{sec:trening}).
+tabela~\ref{tab:podsumowanie-danych}. Ostateczny zbiór uczący objął 20\,227 okien pochodzących z 42 przejazdów.
+Klasy rozłożone są silnie nierównomiernie --- z wyraźną przewagą jazdy
+neutralnej, przy czym jazda agresywna, zdefiniowana wyłącznie zdarzeniami
+kinematycznymi, stanowi zdecydowaną
+mniejszość zbioru --- co uwzględniono przy podziale na zbiór treningowy
+i testowy (podrozdział~\ref{sec:trening}).
 
 \begin{table}[!h]
     \centering
@@ -551,12 +553,30 @@ przy podziale na zbiór treningowy i testowy (podrozdział~\ref{sec:trening}).
         Łączny czas jazdy w zbiorze & ok. 18,9~h \\ \hline
         Liczba wyznaczonych okien czasowych (5~s, krok 2,5~s) & 24\,941 \\ \hline
         Okna z wiarygodnym odczytem zużycia paliwa & 77,6\% \\ \hline
-        Okna odrzucone jako margines eco/normal & 3\,216 \\ \hline
-        Okna w ostatecznym zbiorze uczącym & 21\,725 \\ \hline
+        Okna odrzucone jako margines eco/normal & 4\,714 \\ \hline
+        Okna w ostatecznym zbiorze uczącym & 20\,227 \\ \hline
         Liczba plików reprezentowanych w zbiorze uczącym & 42 z~45 \\ \hline
-        Udział klasy \emph{normal} / \emph{aggressive} / \emph{eco} & 44,5\% / 38,4\% / 17,1\% \\ \hline
+        Udział klasy \emph{normal} / \emph{aggressive} / \emph{eco} & 67,1\% / 10,3\% / 22,5\% \\ \hline
     \end{tabular}
 \end{table}
+
+Ponieważ etykiety eco/normal wyznaczane są progami zużycia paliwa, a etykieta
+aggressive --- niezależnymi od paliwa zdarzeniami kinematycznymi, przyjęte
+reguły można zweryfikować, sprawdzając, czy rzeczywiste zużycie paliwa
+w oknach każdej z trzech klas układa się zgodnie z oczekiwaniem fizycznym:
+okna eco powinny mieć najniższe zużycie, aggressive --- najwyższe, mimo że
+etykieta aggressive nie była w ogóle wyznaczana na podstawie paliwa.
+Rysunek~\ref{fig:walidacja-paliwo} potwierdza tę zależność.
+
+% ZDJĘCIE (do wstawienia): wykres pudełkowy L/100km per klasa, notebook
+% ML_driving_style.ipynb, sekcja 4 "Walidacja etykiet — zużycie paliwa per
+% klasa" (komórka z ax.boxplot(...)).
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=1.0\linewidth]{walidacja-etykiet-paliwo.png}
+    \caption{Rzeczywiste zużycie paliwa (L/100km) w oknach poszczególnych klas stylu jazdy --- walidacja zgodności etykiet z fizyką zjawiska.}
+    \label{fig:walidacja-paliwo}
+\end{figure}
 
 %---------------------------------------------------------------
 \subsection{Trening i wybór modelu uczenia maszynowego}
@@ -565,7 +585,7 @@ przy podziale na zbiór treningowy i testowy (podrozdział~\ref{sec:trening}).
 Na podstawie przygotowanego zbioru okien czasowych (podrozdział~\ref{sec:dane})
 wytrenowano i porównano dwa warianty modelu klasyfikującego styl jazdy. Oba
 warianty należą do tej samej rodziny algorytmów --- zespołów drzew
-decyzyjnych z pakietu scikit-learn --- i operują na identycznym zestawie
+decyzyjnych z pakietu scikit-learn~\cite{scikit-learn} --- i operują na identycznym zestawie
 20 cech, co pozwoliło ograniczyć porównanie wyłącznie do wpływu samego
 algorytmu uczącego na jakość klasyfikacji.
 
@@ -596,7 +616,7 @@ obsługującym m.in. zespoły drzew decyzyjnych wytrenowane w scikit-learn.
 
 \subsubsection{Trening i walidacja modeli}
 
-Zbiór 21\,725 okien podzielono na część treningową i testową funkcją
+Zbiór 20\,227 okien podzielono na część treningową i testową funkcją
 \texttt{GroupShuffleSplit} (25\% na test) grupowaną po pliku źródłowym
 przejazdu, dzięki czemu okna z tego samego przejazdu --- silnie ze sobą
 skorelowane w czasie --- nie mogły jednocześnie trafić do zbioru treningowego
@@ -606,8 +626,8 @@ z tego samego przejazdu (a więc niemal identyczne pod względem cech) mogłyby
 trafić po obu stronach podziału, sztucznie zawyżając wynik na zbiorze
 testowym --- model \mbox{,,rozpoznawałby''} fragment przejazdu, na którym
 częściowo już się uczył, zamiast oceniać jego zdolność do generalizacji na
-zupełnie nowe przejazdy. Podział dał 14\,515 okien treningowych (31 plików) oraz
-7\,210 okien testowych (11 plików). Parametry kwantyzacji (skalowanie do
+zupełnie nowe przejazdy. Podział dał 13\,259 okien treningowych (31 plików) oraz
+6\,968 okien testowych (11 plików). Parametry kwantyzacji (skalowanie do
 zakresu $-30000$ -- $30000$) dopasowano wyłącznie na zbiorze treningowym
 i zastosowano bez ponownego dopasowania do zbioru testowego.
 
@@ -620,15 +640,17 @@ i zastosowano bez ponownego dopasowania do zbioru testowego.
 
 Wyniki klasyfikacji modelu RandomForest na zbiorze testowym zestawiono
 w tabeli~\ref{tab:wyniki-test}. Uzyskano dokładność zbalansowaną
-(\emph{balanced accuracy}) 95,4\% oraz makro-uśrednioną miarę F1 na
-poziomie 94,1\%. Klasa \emph{aggressive} rozpoznawana jest niemal bezbłędnie
-(pełna precyzja, żadne okno neutralne ani ekonomiczne nie zostało błędnie
-zaklasyfikowane jako agresywne), natomiast rozróżnienie klas \emph{eco} oraz
-\emph{normal} jest zadaniem trudniejszym, o czym świadczy niższa precyzja
-klasy \emph{eco} (81,9\%). Macierz pomyłek (tabela~\ref{tab:macierz-pomylek})
-potwierdza ten wzorzec: pomyłki koncentrują się niemal wyłącznie między klasami
-\emph{normal} i \emph{eco}, a klasa \emph{aggressive} praktycznie nie miesza
-się z pozostałymi dwiema.
+(\emph{balanced accuracy}) 96,0\% oraz makro-uśrednioną miarę F1 na
+poziomie 93,9\%. Klasa \emph{aggressive} --- mimo że stanowi najmniej liczną
+grupę w zbiorze --- rozpoznawana jest bardzo dobrze, z wysoką czułością
+(98,9\%) i wysoką precyzją (94,9\%), natomiast rozróżnienie klas \emph{eco}
+oraz \emph{normal} pozostaje zadaniem trudniejszym, o czym świadczy niższa
+precyzja klasy \emph{eco} (83,2\%). Macierz pomyłek (tabela~\ref{tab:macierz-pomylek})
+potwierdza ten wzorzec: dominującym źródłem pomyłek jest granica między
+klasami \emph{normal} i \emph{eco}; pojawiają się przy tym również nieliczne
+pomyłki między klasą \emph{normal} a \emph{aggressive}, co wynika z faktu, że
+gwałtowne zdarzenia kinematyczne definiujące jazdę agresywną mogą wystąpić
+przy dowolnej prędkości, również typowej dla jazdy neutralnej.
 
 \begin{table}[!h]
     \centering
@@ -636,13 +658,13 @@ się z pozostałymi dwiema.
     \label{tab:wyniki-test}
     \begin{tabular}{| l | c | c | c | r |} \hline
         \textbf{Klasa} & \textbf{Precyzja} & \textbf{Czułość} & \textbf{F1} & \textbf{Liczność} \\ \hline\hline
-        aggressive & 100,0\% & 96,3\% & 98,1\% & 1690 \\ \hline
-        eco        & 81,9\%  & 97,4\% & 89,0\% & 1585 \\ \hline
-        normal     & 98,4\%  & 92,5\% & 95,3\% & 3935 \\ \hline
+        aggressive & 94,9\%  & 98,9\% & 96,9\% & 756  \\ \hline
+        eco        & 83,2\%  & 97,7\% & 89,9\% & 1799 \\ \hline
+        normal     & 98,9\%  & 91,2\% & 94,9\% & 4413 \\ \hline
         \hline
-        \textbf{dokładność ogólna} & \multicolumn{3}{c|}{94,4\%} & 7210 \\ \hline
-        \textbf{balanced accuracy} & \multicolumn{3}{c|}{95,4\%} & --- \\ \hline
-        \textbf{makro F1} & \multicolumn{3}{c|}{94,1\%} & --- \\ \hline
+        \textbf{dokładność ogólna} & \multicolumn{3}{c|}{93,7\%} & 6968 \\ \hline
+        \textbf{balanced accuracy} & \multicolumn{3}{c|}{96,0\%} & --- \\ \hline
+        \textbf{makro F1} & \multicolumn{3}{c|}{93,9\%} & --- \\ \hline
     \end{tabular}
 \end{table}
 
@@ -653,11 +675,21 @@ się z pozostałymi dwiema.
     \begin{tabular}{| l | c | c | c |} \hline
         \multirow{2}{*}{\textbf{Klasa rzeczywista}} & \multicolumn{3}{c|}{\textbf{Klasa przewidziana}} \\ \cline{2-4}
          & normal & eco & aggressive \\ \hline\hline
-        normal     & 3639 & 296  & 0    \\ \hline
-        eco        & 42   & 1543 & 0    \\ \hline
-        aggressive & 18   & 45   & 1627 \\ \hline
+        normal     & 4024 & 352  & 37   \\ \hline
+        eco        & 38   & 1758 & 3    \\ \hline
+        aggressive & 5    & 3    & 748  \\ \hline
     \end{tabular}
 \end{table}
+
+% ZDJĘCIE (do wstawienia): mapa cieplna macierzy pomyłek, notebook
+% ML_driving_style.ipynb, sekcja 7 "Macierz pomyłek — wizualizacja"
+% (dwa panele: liczby i wersja znormalizowana wierszowo/recall).
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=\linewidth]{macierz-pomylek-heatmap.png}
+    \caption{Macierz pomyłek jako mapa cieplna --- liczby bezwzględne (po lewej) oraz znormalizowana wierszowo, jako czułość (recall) per klasa (po prawej).}
+    \label{fig:macierz-pomylek-heatmap}
+\end{figure}
 
 Stabilność obu porównywanych algorytmów zweryfikowano dodatkowo 5-krotną
 walidacją krzyżową \texttt{GroupKFold}, w której każdy fold zawiera inny
@@ -674,16 +706,18 @@ wybrano model RandomForest.
     \label{tab:cv}
     \begin{tabular}{| l | c | c |} \hline
         \textbf{Model} & \textbf{Balanced accuracy} & \textbf{Makro F1} \\ \hline\hline
-        ExtraTrees   & 87,7\% $\pm$ 4,4~pp & 86,0\% $\pm$ 4,3~pp \\ \hline
-        RandomForest & 96,5\% $\pm$ 1,3~pp & 95,2\% $\pm$ 0,7~pp \\ \hline
+        ExtraTrees   & 87,4\% $\pm$ 3,5~pp & 79,7\% $\pm$ 2,3~pp \\ \hline
+        RandomForest & 95,8\% $\pm$ 1,1~pp & 94,1\% $\pm$ 0,7~pp \\ \hline
     \end{tabular}
 \end{table}
 
 Ważność poszczególnych cech dla wytrenowanego modelu RandomForest, zestawiona
 w tabeli~\ref{tab:waznosc-cech}, wskazuje, że o klasyfikacji stylu jazdy
-decydują przede wszystkim cechy związane z prędkością i obrotami silnika, przy
-istotnym udziale średniego przyspieszenia oraz gwałtowności wciskania pedału
-gazu.
+decyduje przede wszystkim gwałtowność wciskania pedału gazu
+(\texttt{throttle\_dp95}) --- co nie jest zaskakujące, skoro cecha ta wprost
+współokreśla granicę etykiety jazdy agresywnej (podrozdział~\ref{sec:dane})
+--- a w dalszej kolejności średnie położenie pedału gazu oraz cechy opisujące
+prędkość i przyspieszenie pojazdu.
 
 \begin{table}[!h]
     \centering
@@ -691,16 +725,16 @@ gazu.
     \label{tab:waznosc-cech}
     \begin{tabular}{| c | l | c |} \hline
         \textbf{Lp.} & \textbf{Cecha} & \textbf{Ważność} \\ \hline\hline
-        1  & \texttt{speed\_mean}    & 25,8\% \\ \hline
-        2  & \texttt{speed\_p95}     & 15,1\% \\ \hline
-        3  & \texttt{rpm\_mean}      & 12,8\% \\ \hline
-        4  & \texttt{rpm\_p95}       & 8,2\%  \\ \hline
-        5  & \texttt{a\_mean}        & 7,8\%  \\ \hline
-        6  & \texttt{throttle\_dp95} & 7,2\%  \\ \hline
-        7  & \texttt{throttle\_mean} & 5,1\%  \\ \hline
-        8  & \texttt{a\_p05}         & 3,6\%  \\ \hline
-        9  & \texttt{a\_p95}         & 3,6\%  \\ \hline
-        10 & \texttt{throttle\_p95}  & 3,3\%  \\ \hline
+        1  & \texttt{throttle\_dp95} & 19,3\% \\ \hline
+        2  & \texttt{throttle\_mean} & 9,4\%  \\ \hline
+        3  & \texttt{speed\_mean}    & 8,9\%  \\ \hline
+        4  & \texttt{a\_mean}        & 8,8\%  \\ \hline
+        5  & \texttt{abs\_a\_mean}   & 8,3\%  \\ \hline
+        6  & \texttt{speed\_p95}     & 5,3\%  \\ \hline
+        7  & \texttt{a\_std}         & 5,0\%  \\ \hline
+        8  & \texttt{throttle\_p95}  & 5,0\%  \\ \hline
+        9  & \texttt{speed\_std}     & 4,2\%  \\ \hline
+        10 & \texttt{throttle\_std}  & 4,1\%  \\ \hline
     \end{tabular}
 \end{table}
 
@@ -711,9 +745,50 @@ gazu.
     \label{fig:waznosc-cech}
 \end{figure}
 
+\subsubsection{Walidacja jakościowa na przykładowym przejeździe}
+\label{sec:walidacja-przejazd}
+
+Miary liczbowe przedstawione powyżej podsumowują zachowanie modelu na całym
+zbiorze testowym, nie pokazują jednak, jak klasyfikacja wygląda w praktyce,
+na konkretnym, ciągłym fragmencie jazdy. W tym celu na wybranym przejeździe
+nałożono na surowe sygnały z magistrali CAN (prędkość, obroty silnika,
+położenie pedałów gazu i hamulca) tło w kolorze odpowiadającym --- w~pierwszym
+ujęciu --- etykiecie nadanej regułą opisaną w podrozdziale~\ref{sec:dane}
+(rysunek~\ref{fig:etykiety-przejazd}), a w drugim, dla tego samego przejazdu
+--- klasie przewidzianej przez wytrenowany model RandomForest na
+skwantyzowanych cechach, a więc dokładnie tą samą ścieżką obliczeniową, jaka
+działa na urządzeniu (rysunek~\ref{fig:predykcje-przejazd}).
+
+Zestawienie tych dwóch wykresów pozwala ocenić zgodność modelu z regułą
+etykietowania w sposób jakościowy, uzupełniający macierz pomyłek: czy model
+zmienia klasyfikację w tych samych momentach jazdy, co reguła, oraz czy
+pas marginesu (odrzucany z treningu jako niejednoznaczny) rzeczywiście
+odpowiada fragmentom, w których trudno jednoznacznie rozstrzygnąć styl
+jazdy.
+
+% ZDJĘCIE (do wstawienia): notebook ML_driving_style.ipynb, sekcja 9
+% "Wizualizacja etykiet na przebiegu przejazdu" (wykres Plotly — zrzut
+% ekranu/eksport do PNG jednego, wybranego przejazdu).
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=\linewidth]{wizualizacja-etykiety-przejazd.png}
+    \caption{Sygnały z magistrali CAN na przykładowym przejeździe z~naniesionym tłem odpowiadającym etykiecie nadanej regułą (w~tym pas marginesu, odrzucany z~treningu).}
+    \label{fig:etykiety-przejazd}
+\end{figure}
+
+% ZDJĘCIE (do wstawienia): notebook ML_driving_style.ipynb, sekcja 9b
+% "Predykcje modelu na tym samym przejeździe" (wykres Plotly — ten sam
+% przejazd co powyżej, tło = predykcja modelu, nie reguła).
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=\linewidth]{wizualizacja-predykcje-przejazd.png}
+    \caption{Te same sygnały co na rysunku~\ref{fig:etykiety-przejazd}, z~tłem odpowiadającym klasie przewidzianej przez wytrenowany model (nie regule etykietowania).}
+    \label{fig:predykcje-przejazd}
+\end{figure}
+
 \subsubsection{Eksport modelu do kodu C}
 
-Wytrenowany model RandomForest (60 drzew, głębokość 7, łącznie 6034 węzły)
+Wytrenowany model RandomForest (60 drzew, głębokość 7, łącznie 7626 węzłów)
 eksportowany jest narzędziem \texttt{emlearn} do postaci statycznego kodu
 w języku C, w którym struktura drzew zapisana jest jako tablice stałych, bez
 zależności od żadnej biblioteki uczenia maszynowego w czasie działania
@@ -732,7 +807,7 @@ obu wytrenowanych modeli wykorzystano \texttt{emlearn}.
 \label{sec:implementacja}
 
 Oprogramowanie urządzenia zrealizowano jako aplikację działającą pod kontrolą
-systemu czasu rzeczywistego FreeRTOS, podzieloną na współpracujące moduły
+systemu czasu rzeczywistego FreeRTOS~\cite{freertos}, podzieloną na współpracujące moduły
 odpowiedzialne za poszczególne funkcje systemu: akwizycję i rejestrację
 danych (podrozdział~\ref{sec:akwizycja}), lokalną predykcję modelu uczenia
 maszynowego oraz naliczanie statystyk oszczędności, opisane w niniejszym
@@ -805,7 +880,7 @@ różnicą względem przygotowania danych uczących jest częstotliwość
 wyznaczania kolejnych okien: podczas gdy w zbiorze uczącym kolejne okna
 przesuwane były co 2,5~s, na urządzeniu nowa predykcja wyznaczana jest przy
 każdej nowej próbce, a więc co 100~ms, na bieżąco przesuwanym oknie ---
-co zapewnia możliwie najkrótsze opóźnienie reakcji interfejsu na zmianę
+co zapewnia minimalne opóźnienie reakcji interfejsu na zmianę
 stylu jazdy. Wyznaczony wektor cech poddawany jest tej samej kwantyzacji do
 liczb całkowitych, z użyciem parametrów wyznaczonych na zbiorze treningowym
 (podrozdział~\ref{sec:trening}), po czym klasyfikowany jest przez osadzony
@@ -880,7 +955,7 @@ przejazdami, więc start urządzenia odpowiada początkowi przejazdu).
 
 Rysunek~\ref{fig:stats-po} w podrozdziale~\ref{sec:ui} przedstawia
 rzeczywisty przykład wyniku tych wyliczeń, zarejestrowany w~trakcie testów
-urządzenia: przy 15,5~km przejechanych stylem ekonomicznym w danym zakresie
+urządzenia: na dystansie 15,5~km sklasyfikowanej jazdy
 urządzenie oszacowało łączną oszczędność 15,12~PLN, złożoną z 2,64~PLN
 oszczędności wynikającej z~mniejszego zużycia paliwa (0,42~l) oraz ok.
 12,48~PLN oszczędności eksploatacyjnych, a także 0,9~kg unikniętej emisji
@@ -1102,8 +1177,8 @@ litrach i w walucie), szacowane oszczędności eksploatacyjne oraz uniknięta
 emisja CO2. Dalej znajduje się poziomy pasek pokazujący udział poszczególnych
 stylów jazdy w wybranym zakresie czasowym, a także zwięzłe podsumowanie
 sadu (liczba drzewek, liczba zebranych, liczba uschniętych, najdłuższa
-seria zebranych drzewek bez uschnięcia) oraz suwak ceny paliwa, względem
-której przeliczane są oszczędności pieniężne.
+seria zebranych drzewek bez uschnięcia) oraz przyciski regulacji ceny paliwa,
+względem której przeliczane są oszczędności pieniężne.
 
 Do czasu zebrania wystarczających danych osobno dla stylu ekonomicznego
 i neutralnego (podrozdział~\ref{sec:implementacja}) górna, główna część
