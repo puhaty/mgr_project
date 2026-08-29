@@ -1,0 +1,133 @@
+WYNIKI ANKIETY PILOTAŻOWEJ
+System analizy stylu jazdy kierowcy (eko-drzewko / gamifikacja)
+Liczba respondentów: 10
+Skala pytań 1-3 oraz 5: 1 (zdecydowanie nie) - 5 (zdecydowanie tak)
+Pytanie 4: wybór jednej opcji (drzewo / punkty liczbowe)
+
+============================================================
+
+Respondent 1
+Staż za kierownicą: 6 lat
+Roczny przebieg: 18 000 km
+P1 (zrozumiałość bez wyjaśnienia): 5
+P2 (rozpraszanie uwagi): 2
+P3 (zachęta do spokojniejszej jazdy): 4
+P4 (drzewo vs punkty): drzewo
+P5 (chęć korzystania we własnym aucie): 5
+Komentarz swobodny: "Od razu wiadomo, czy jadę dobrze, nie trzeba się wpatrywać w liczby."
+
+------------------------------------------------------------
+
+Respondent 2
+Staż za kierownicą: 12 lat
+Roczny przebieg: 25 000 km
+P1: 4
+P2: 2
+P3: 4
+P4: drzewo
+P5: 4
+
+------------------------------------------------------------
+
+Respondent 3
+Staż za kierownicą: 3 lata
+Roczny przebieg: 9 000 km
+P1: 5
+P2: 1
+P3: 5
+P4: drzewo
+P5: 5
+
+------------------------------------------------------------
+
+Respondent 4
+Staż za kierownicą: 20 lat
+Roczny przebieg: 30 000 km
+P1: 3
+P2: 2
+P3: 3
+P4: punkty
+P5: 3
+Komentarz swobodny: "Jeżdżę dużo służbowo, wolałbym też mieć twardą liczbę do raportu."
+
+------------------------------------------------------------
+
+Respondent 5
+Staż za kierownicą: 8 lat
+Roczny przebieg: 15 000 km
+P1: 4
+P2: 2
+P3: 4
+P4: drzewo
+P5: 4
+Komentarz swobodny: "Sad zebranych drzewek to fajny efekt długoterminowy, chce się wracać do jazdy eko."
+
+------------------------------------------------------------
+
+Respondent 6
+Staż za kierownicą: 15 lat
+Roczny przebieg: 22 000 km
+P1: 5
+P2: 1
+P3: 4
+P4: drzewo
+P5: 4
+Komentarz swobodny: "Kolor poświaty przy krawędzi ekranu bardzo dobrze się sprawdza kątem oka."
+
+------------------------------------------------------------
+
+Respondent 7
+Staż za kierownicą: 2 lata
+Roczny przebieg: 7 000 km
+P1: 4
+P2: 3
+P3: 5
+P4: drzewo
+P5: 5
+Komentarz swobodny: "Na początku animacja monety trochę odciągała wzrok, ale szybko się przyzwyczaiłem."
+
+------------------------------------------------------------
+
+Respondent 8
+Staż za kierownicą: 10 lat
+Roczny przebieg: 20 000 km
+P1: 3
+P2: 2
+P3: 3
+P4: drzewo
+P5: 3
+
+------------------------------------------------------------
+
+Respondent 9
+Staż za kierownicą: 25 lat
+Roczny przebieg: 35 000 km
+P1: 4
+P2: 1
+P3: 3
+P4: drzewo
+P5: 3
+
+------------------------------------------------------------
+
+Respondent 10
+Staż za kierownicą: 5 lat
+Roczny przebieg: 12 000 km
+P1: 5
+P2: 2
+P3: 5
+P4: drzewo
+P5: 5
+
+============================================================
+PODSUMOWANIE ZBIORCZE
+
+Średnie wyniki (skala 1-5):
+P1 (zrozumiałość bez wyjaśnienia):        4,2
+P2 (rozpraszanie uwagi):                  1,8   (niższa wartość = mniej rozpraszające, korzystnie)
+P3 (zachęta do spokojniejszej jazdy):     4,0
+P5 (chęć korzystania we własnym aucie):   4,1
+
+Rozkład P4 (drzewo vs punkty liczbowe):
+- drzewo:  9 / 10  (90%)
+- punkty:  1 / 10  (10%)

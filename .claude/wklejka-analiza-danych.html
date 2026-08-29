@@ -1,0 +1,530 @@
+<title>Wklejka Analizy danych</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  :root {
+    --bg:        #EFF2F2;
+    --surface:   #FFFFFF;
+    --surface-2: #E4EAEA;
+    --ink:       #151B1D;
+    --ink-2:     #3D4A4D;
+    --muted:     #66767A;
+    --line:      #D3DBDB;
+    --line-2:    #BAC5C5;
+    --accent:    #0B5D63;
+    --accent-ink:#FFFFFF;
+    --warm:      #A2600C;
+    --shadow:    0 1px 2px rgba(21,27,29,.06), 0 8px 24px -16px rgba(21,27,29,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:        #0F1416;
+      --surface:   #171F21;
+      --surface-2: #202A2D;
+      --ink:       #E7EDED;
+      --ink-2:     #C2CDCE;
+      --muted:     #8B9B9E;
+      --line:      #2A3639;
+      --line-2:    #3A4A4E;
+      --accent:    #4FB3B8;
+      --accent-ink:#08191A;
+      --warm:      #D9A050;
+      --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:        #0F1416;
+    --surface:   #171F21;
+    --surface-2: #202A2D;
+    --ink:       #E7EDED;
+    --ink-2:     #C2CDCE;
+    --muted:     #8B9B9E;
+    --line:      #2A3639;
+    --line-2:    #3A4A4E;
+    --accent:    #4FB3B8;
+    --accent-ink:#08191A;
+    --warm:      #D9A050;
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.85);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  /* ---------- header ---------- */
+  .masthead { display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(30px, 5vw, 42px);
+    line-height: 1.1;
+    letter-spacing: -.015em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lede {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--ink-2);
+    font-size: 15.5px;
+  }
+  .rule { height: 1px; background: var(--line); }
+
+  /* ---------- block ---------- */
+  .block {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .block-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+  }
+  .step {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--surface);
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    padding: 2px 7px;
+    flex: none;
+  }
+  .block-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -.005em;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .block-title small {
+    display: block;
+    font-weight: 400;
+    font-size: 12.5px;
+    color: var(--muted);
+    letter-spacing: 0;
+  }
+  .copy {
+    flex: none;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: opacity .15s ease, background .15s ease;
+  }
+  .copy:hover { opacity: .88; }
+  .copy:focus-visible { outline: 2px solid var(--warm); outline-offset: 2px; }
+  .copy[data-state="done"] { background: var(--warm); }
+  .copy[data-state="fail"] { background: var(--surface); color: var(--ink); border-color: var(--line-2); }
+
+  .block-body { padding: 22px 24px 26px; }
+
+  /* pasteable prose */
+  .para {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 16.5px;
+    line-height: 1.65;
+    color: var(--ink);
+    margin: 0 0 1em;
+    max-width: 68ch;
+    text-align: justify;
+    hyphens: auto;
+  }
+  .para:last-child { margin-bottom: 0; }
+  .para-h {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .note {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 14px 0 0;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    max-width: 68ch;
+  }
+
+  /* ---------- table ---------- */
+  .table-scroll { overflow-x: auto; }
+  table.dane {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 620px;
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  table.dane th,
+  table.dane td {
+    border: 1px solid var(--line-2);
+    padding: 9px 11px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.dane thead th {
+    background: var(--surface-2);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .caption {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0 0 12px;
+  }
+  .caption strong { color: var(--ink-2); font-weight: 600; }
+
+  /* ---------- footer ---------- */
+  .finish {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 18px 22px;
+  }
+  .finish h2 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+  .finish p { margin: 0 0 8px; font-size: 14.5px; color: var(--ink-2); max-width: 66ch; }
+  .finish p:last-child { margin-bottom: 0; }
+  kbd {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--line-2);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 36px 16px 72px; }
+    .block-body { padding: 18px 16px 20px; }
+    .block-head { flex-wrap: wrap; }
+    .copy { width: 100%; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Praca magisterska · rozdział Projekt</div>
+    <h1>Analiza danych</h1>
+    <p class="lede">Pięć bloków do wklejenia w kolejności. Nowy podrozdział wchodzi na początek rozdziału Projekt, przed „Magistralą CAN”, i staje się punktem 4.1.</p>
+  </header>
+
+  <div class="rule"></div>
+
+  <!-- 1 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">1</span>
+      <span class="block-title">Akapit wprowadzający rozdział Projekt
+        <small>Zastępuje obecny akapit pod nagłówkiem „Projekt”</small>
+      </span>
+      <button class="copy" data-target="b1" data-mode="text">Kopiuj</button>
+    </div>
+    <div class="block-body" id="b1">
+      <p class="para">Niniejszy rozdział przedstawia proces projektowania oraz implementacji systemu analizy stylu jazdy kierowcy. Kolejne podrozdziały odpowiadają kolejności realizacji prac: od analizy danych, ustalającej jakie wielkości opisują sposób prowadzenia pojazdu i które z nich pojazd faktycznie udostępnia, poprzez wprowadzenie do magistrali CAN stanowiącej źródło wszystkich danych wykorzystywanych przez system, koncepcję i architekturę rozwiązania, dobór platformy sprzętowej, budowę podsystemu akwizycji danych oraz przygotowanie zbioru danych uczących, aż po trening i wybór modelu uczenia maszynowego, jego osadzenie na platformie docelowej oraz projekt interfejsu użytkownika wykorzystującego mechanizmy nudgingu [4] i gamifikacji [5].</p>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">2</span>
+      <span class="block-title">Nagłówek nowego podrozdziału
+        <small>Styl Nagłówek 2, przed „Magistralą CAN”</small>
+      </span>
+      <button class="copy" data-target="b2" data-mode="text">Kopiuj</button>
+    </div>
+    <div class="block-body" id="b2">
+      <p class="para-h">Analiza danych</p>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">3</span>
+      <span class="block-title">Treść — akapity przed tabelą
+        <small>Trzy akapity</small>
+      </span>
+      <button class="copy" data-target="b3" data-mode="text">Kopiuj</button>
+    </div>
+    <div class="block-body" id="b3">
+      <p class="para">Punktem wyjścia dla projektu systemu jest ustalenie, jakie wielkości opisujące ruch pojazdu niosą informację o sposobie jego prowadzenia, a następnie sprawdzenie, które z nich pojazd faktycznie udostępnia i w jakiej postaci. Odpowiedzi na te dwa pytania wyznaczają zarówno wymagania stawiane podsystemowi akwizycji, jak i zbiór cech, na których operować będzie model klasyfikujący styl jazdy. Z tego powodu analiza ta poprzedza wszystkie pozostałe etapy prac.</p>
+      <p class="para">Przegląd literatury przedstawiony w podrozdziale 2.2.1 wskazuje, że do rozróżnienia stylów jazdy wystarcza niewielki zestaw wielkości rejestrowanych natywnie przez sieć pokładową pojazdu. Khan i inni wykazali, że prędkość pojazdu, prędkość obrotowa silnika oraz położenie przepustnicy niosą wystarczająco dużo informacji do skutecznej klasyfikacji zachowań za kierownicą, bez konieczności sięgania po dodatkowe czujniki inercyjne [12]. Meiring i Myburgh zwracają z kolei uwagę, że przewaga metod uczenia maszynowego nad regułami progowymi ujawnia się dopiero wtedy, gdy model dysponuje wieloma, wzajemnie skorelowanymi cechami opisującymi ten sam przejazd [3]. Badania nad wpływem stylu jazdy na zużycie paliwa wskazują natomiast na gwałtowne przyspieszanie i hamowanie jako zachowania o największym udziale w nadmiarowym zużyciu paliwa [2].</p>
+      <p class="para">Na tej podstawie jako wielkości bazowe przyjęto prędkość pojazdu, prędkość obrotową silnika oraz położenie pedałów przyspieszenia i hamulca. Bezpośrednio z nich wynikają dwie wielkości pochodne o kluczowym znaczeniu dla oceny płynności jazdy: przyspieszenie wzdłużne, będące pochodną prędkości po czasie, oraz szarpnięcie, czyli pochodna przyspieszenia, opisująca tempo zmian samego przyspieszenia. Żadnej z tych dwóch wielkości pojazd nie nadaje na magistrali — muszą one zostać wyznaczone z zarejestrowanego przebiegu prędkości, co stawia konkretne wymagania wobec rozdzielczości czasowej akwizycji. Zestawienie rozważanych wielkości wraz z ich znaczeniem dla oceny stylu jazdy przedstawia Tabela 1.</p>
+      <p class="note">Odwołanie „Tabela 1” wstaw przez Odwołania → Odsyłacz, wskazując podpis tabeli z bloku 4 — wtedy numer zaktualizuje się sam razem z resztą pracy.</p>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">4</span>
+      <span class="block-title">Tabela
+        <small>Kopiuje się jako tabela, nie jako tekst</small>
+      </span>
+      <button class="copy" data-target="tab-dane" data-mode="table">Kopiuj tabelę</button>
+    </div>
+    <div class="block-body">
+      <p class="caption"><strong>Podpis:</strong> Wielkości opisujące styl jazdy i ich dostępność na magistrali pojazdu testowego.</p>
+      <div class="table-scroll">
+        <table class="dane" id="tab-dane">
+          <thead>
+            <tr>
+              <th>Wielkość</th>
+              <th>Znaczenie dla oceny stylu jazdy</th>
+              <th>Sposób pozyskania</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Prędkość pojazdu</td>
+              <td>Odniesienie dla pozostałych wielkości; pozwala odróżnić charakter jazdy miejskiej od trasowej</td>
+              <td>Nadawana bezpośrednio, krok 1 km/h</td>
+            </tr>
+            <tr>
+              <td>Prędkość obrotowa silnika</td>
+              <td>Utrzymywanie wysokich obrotów wskazuje na jazdę nieekonomiczną i przyspiesza zużycie podzespołów</td>
+              <td>Nadawana bezpośrednio, zakres 0–8191 obr/min</td>
+            </tr>
+            <tr>
+              <td>Położenie pedału przyspieszenia</td>
+              <td>Tempo i gwałtowność operowania pedałem odróżnia jazdę spokojną od dynamicznej</td>
+              <td>Nadawana bezpośrednio, skala 256-stopniowa</td>
+            </tr>
+            <tr>
+              <td>Położenie pedału hamulca</td>
+              <td>Pozwala rozpoznać ostre hamowania oraz jazdę wymuszającą częste hamowanie</td>
+              <td>Nadawana bezpośrednio, skala 1024-stopniowa</td>
+            </tr>
+            <tr>
+              <td>Przyspieszenie wzdłużne</td>
+              <td>Gwałtowne przyspieszanie i hamowanie mają największy udział w nadmiarowym zużyciu paliwa [2]</td>
+              <td>Wyznaczane jako pochodna prędkości po czasie</td>
+            </tr>
+            <tr>
+              <td>Szarpnięcie</td>
+              <td>Opisuje płynność jazdy — tempo zmian samego przyspieszenia</td>
+              <td>Wyznaczane jako pochodna przyspieszenia</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Po wklejeniu: zaznacz tabelę → Układ → Powtórz wiersze nagłówka, żeby nagłówek przechodził na kolejną stronę. Podpis wstaw przez Odwołania → Wstaw podpis (nad tabelą), inaczej numeracja nie będzie się aktualizować.</p>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">5</span>
+      <span class="block-title">Treść — akapity po tabeli
+        <small>Trzy akapity domykające podrozdział</small>
+      </span>
+      <button class="copy" data-target="b5" data-mode="text">Kopiuj</button>
+    </div>
+    <div class="block-body" id="b5">
+      <p class="para">Ustalenie, które z tych wielkości pojazd testowy faktycznie udostępnia, wymagało zbadania ruchu na jego magistrali. Nie dysponowano dokumentacją producenta opisującą znaczenie poszczególnych ramek, dlatego znaczenie sygnałów odtworzono samodzielnie. Rejestrowano pełny ruch magistrali, przy filtrze sprzętowym akceptującym wszystkie identyfikatory, a następnie zestawiano zmiany zawartości kolejnych ramek z obserwowanym w tym samym czasie zachowaniem pojazdu: wciśnięciem pedału przyspieszenia lub hamulca, zmianą prędkości wskazywanej przez zegary, załączeniem i wyłączeniem zapłonu czy włączeniem biegu wstecznego. Powtarzalna zależność między konkretnym polem ramki o danym identyfikatorze a obserwowaną wielkością pozwalała przypisać temu polu znaczenie oraz wyznaczyć przelicznik wartości surowej na wielkość fizyczną.</p>
+      <p class="para">Analiza wykazała, że magistrala pojazdu testowego pracuje z prędkością 50 kbit/s i wykorzystuje rozszerzony, 29-bitowy format identyfikatora ramki [16]. Zidentyfikowano dwanaście użytecznych sygnałów, spośród których cztery — prędkość, prędkość obrotowa silnika oraz położenie obu pedałów — pokrywają w całości zestaw wielkości bazowych wskazanych wyżej. Pozostałe osiem nie opisuje bezpośrednio stylu jazdy, lecz stan pojazdu, i pełni funkcje pomocnicze: stan zapłonu oraz bieg wsteczny sterują rejestracją i pozwalają odfiltrować fragmenty nieprzydatne do analizy, licznik zużycia paliwa stanowi podstawę etykietowania danych uczących, a poziom paliwa, przebieg całkowity, zasięg, temperatura oleju i status układu stabilizacji toru jazdy zasilają prezentację danych bieżących oraz moduł statystyk. Pełne zestawienie sygnałów wraz z identyfikatorami ramek i sposobem skalowania przedstawiono w podrozdziale 4.5.2, opisującym implementację parsera.</p>
+      <p class="para">Ostatnim elementem analizy jest ustalenie wymaganej częstotliwości i rozdzielczości akwizycji. Ponieważ styl jazdy oceniany jest nie dla pojedynczych chwil, lecz dla kilkusekundowych fragmentów przejazdu, częstotliwość musi być na tyle duża, aby w obrębie takiego fragmentu dało się wiarygodnie wyznaczyć nie tylko wartości średnie wielkości bazowych, ale również ich pochodne. Przyjęto stałą częstotliwość próbkowania 10 Hz, co dla pięciosekundowego okna analizy przyjętego w podrozdziale 4.6.2 daje pięćdziesiąt próbek, a więc pięćdziesiąt kolejnych wartości przyspieszenia i szarpnięcia wyznaczanych jako różnice sąsiednich próbek. Rozdzielczość poszczególnych wielkości wynika wprost z postaci, w jakiej pojazd je nadaje: prędkość przekazywana jest z krokiem 1 km/h, a położenie pedałów przyspieszenia i hamulca odpowiednio w skali 256- i 1024-stopniowej. Przy takim kroku kwantyzacji prędkości pojedyncza różnica sąsiednich próbek jest wielkością zgrubną — miarodajny obraz dynamiki jazdy daje dopiero rozkład tych wartości w obrębie całego okna, opisywany wartościami średnimi, odchyleniem standardowym oraz percentylami.</p>
+      <p class="note">Numery „4.5.2” i „4.6.2” to docelowe wartości po przenumerowaniu. Wstaw je jako odsyłacze do nagłówków „Identyfikacja i parsowanie sygnałów pojazdu” oraz „Okna czasowe i ekstrakcja cech”.</p>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">6</span>
+      <span class="block-title">Poprawka we Wstępie
+        <small>Podrozdział „Wnioski z przeglądu i układ pracy”, ostatni akapit</small>
+      </span>
+      <button class="copy" data-target="b6" data-mode="text">Kopiuj</button>
+    </div>
+    <div class="block-body" id="b6">
+      <p class="para">W dalszych rozdziałach przedstawiono kolejno: szczegółowe wymagania projektowe stawiane opracowywanemu systemowi (rozdział 3), analizę danych ustalającą, jakie wielkości opisują styl jazdy i które z nich udostępnia pojazd (podrozdział 4.1), wprowadzenie do zasad działania magistrali CAN niezbędne do zrozumienia dalszej części pracy (podrozdział 4.2), a następnie pełny opis koncepcji, architektury oraz implementacji proponowanego rozwiązania — od akwizycji danych z pojazdu, przez przygotowanie zbioru danych i trening modelu klasyfikującego styl jazdy, po implementację systemu na docelowej platformie sprzętowej oraz projekt interfejsu użytkownika (podrozdział 4.3 i kolejne).</p>
+      <p class="note">Zastępuje zdanie zaczynające się od „W dalszych rozdziałach przedstawiono kolejno:”.</p>
+    </div>
+  </section>
+
+  <div class="finish">
+    <h2>Na koniec</h2>
+    <p>Po wklejeniu wszystkich bloków: <kbd>Ctrl</kbd> + <kbd>A</kbd>, potem <kbd>F9</kbd>. Przy pytaniu o spisy wybierz aktualizację całych spisów. Numery podrozdziałów, tabel, rysunków oraz spis treści przenumerują się same — w dokumencie odsyłacze są polami, więc nic nie trzeba poprawiać ręcznie.</p>
+    <p>Bloki tekstowe kopiują się jako czysty tekst, bez tła i numerów wierszy — Word nada im styl akapitu z miejsca wklejenia. Jeśli mimo to formatowanie przyjdzie ze strony, wklej przez <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd>.</p>
+  </div>
+
+</div>
+
+<script>
+  function proseText(el) {
+    var nodes = el.querySelectorAll(".para, .para-h");
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      out.push(nodes[i].textContent.replace(/\s+/g, " ").trim());
+    }
+    return out.join("\n\n");
+  }
+
+  function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function tableHtml(tbl) {
+    var cell = "border:1px solid #000000;padding:4pt 6pt;vertical-align:top;";
+    var html = '<table style="border-collapse:collapse;">';
+    var heads = tbl.querySelectorAll("thead th");
+    if (heads.length) {
+      html += "<thead><tr>";
+      for (var i = 0; i < heads.length; i++) {
+        html += '<th style="' + cell + 'font-weight:bold;text-align:left;">' + esc(heads[i].textContent.trim()) + "</th>";
+      }
+      html += "</tr></thead>";
+    }
+    html += "<tbody>";
+    var rows = tbl.querySelectorAll("tbody tr");
+    for (var r = 0; r < rows.length; r++) {
+      html += "<tr>";
+      var cells = rows[r].querySelectorAll("td");
+      for (var c = 0; c < cells.length; c++) {
+        html += '<td style="' + cell + '">' + esc(cells[c].textContent.trim()) + "</td>";
+      }
+      html += "</tr>";
+    }
+    return html + "</tbody></table>";
+  }
+
+  function tableText(tbl) {
+    var lines = [];
+    var rows = tbl.querySelectorAll("tr");
+    for (var r = 0; r < rows.length; r++) {
+      var cells = rows[r].querySelectorAll("th, td");
+      var parts = [];
+      for (var c = 0; c < cells.length; c++) {
+        parts.push(cells[c].textContent.replace(/\s+/g, " ").trim());
+      }
+      lines.push(parts.join("\t"));
+    }
+    return lines.join("\n");
+  }
+
+  function flash(btn, label, state) {
+    var original = btn.dataset.label || btn.textContent;
+    btn.dataset.label = original;
+    btn.textContent = label;
+    btn.setAttribute("data-state", state);
+    window.setTimeout(function () {
+      btn.textContent = original;
+      btn.removeAttribute("data-state");
+    }, 1800);
+  }
+
+  function legacyCopy(html, text) {
+    var holder = document.createElement("div");
+    holder.setAttribute("contenteditable", "true");
+    holder.style.position = "fixed";
+    holder.style.left = "-9999px";
+    holder.style.top = "0";
+    holder.innerHTML = html || esc(text).replace(/\n/g, "<br>");
+    document.body.appendChild(holder);
+    var range = document.createRange();
+    range.selectNodeContents(holder);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    sel.removeAllRanges();
+    document.body.removeChild(holder);
+    return ok;
+  }
+
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest(".copy");
+    if (!btn) return;
+
+    var el = document.getElementById(btn.dataset.target);
+    if (!el) return;
+
+    var mode = btn.dataset.mode;
+    var html = null;
+    var text;
+
+    if (mode === "table") {
+      html = tableHtml(el);
+      text = tableText(el);
+    } else {
+      text = proseText(el);
+    }
+
+    var done = function () { flash(btn, "Skopiowano", "done"); };
+    var failed = function () {
+      if (legacyCopy(html, text)) { done(); }
+      else { flash(btn, "Zaznacz i skopiuj ręcznie", "fail"); }
+    };
+
+    if (navigator.clipboard && window.ClipboardItem && html) {
+      var payload = {
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" })
+      };
+      navigator.clipboard.write([new ClipboardItem(payload)]).then(done).catch(failed);
+    } else if (navigator.clipboard && navigator.clipboard.writeText && !html) {
+      navigator.clipboard.writeText(text).then(done).catch(failed);
+    } else {
+      failed();
+    }
+  });
+</script>

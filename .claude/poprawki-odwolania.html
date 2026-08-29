@@ -1,0 +1,557 @@
+<title>Odwołania w mianowniku</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  :root {
+    --bg:        #EFF2F2;
+    --surface:   #FFFFFF;
+    --surface-2: #E4EAEA;
+    --ink:       #151B1D;
+    --ink-2:     #3D4A4D;
+    --muted:     #66767A;
+    --line:      #D3DBDB;
+    --line-2:    #BAC5C5;
+    --accent:    #0B5D63;
+    --accent-ink:#FFFFFF;
+    --warm:      #A2600C;
+    --bad-bg:    #F7E4E4;
+    --bad-ink:   #8C2F2F;
+    --shadow:    0 1px 2px rgba(21,27,29,.06), 0 8px 24px -16px rgba(21,27,29,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:        #0F1416;
+      --surface:   #171F21;
+      --surface-2: #202A2D;
+      --ink:       #E7EDED;
+      --ink-2:     #C2CDCE;
+      --muted:     #8B9B9E;
+      --line:      #2A3639;
+      --line-2:    #3A4A4E;
+      --accent:    #4FB3B8;
+      --accent-ink:#08191A;
+      --warm:      #D9A050;
+      --bad-bg:    #3A2224;
+      --bad-ink:   #E8A0A0;
+      --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:        #0F1416;
+    --surface:   #171F21;
+    --surface-2: #202A2D;
+    --ink:       #E7EDED;
+    --ink-2:     #C2CDCE;
+    --muted:     #8B9B9E;
+    --line:      #2A3639;
+    --line-2:    #3A4A4E;
+    --accent:    #4FB3B8;
+    --accent-ink:#08191A;
+    --warm:      #D9A050;
+    --bad-bg:    #3A2224;
+    --bad-ink:   #E8A0A0;
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.85);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .masthead { display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(30px, 5vw, 42px);
+    line-height: 1.1;
+    letter-spacing: -.015em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lede { margin: 0; max-width: 66ch; color: var(--ink-2); font-size: 15.5px; }
+  .rule { height: 1px; background: var(--line); }
+
+  .alert {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--warm);
+    border-radius: 4px;
+    padding: 18px 22px;
+  }
+  .alert h2 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--warm);
+    margin: 0 0 8px;
+  }
+  .alert p { margin: 0 0 8px; font-size: 14.5px; color: var(--ink-2); max-width: 70ch; }
+  .alert p:last-child { margin-bottom: 0; }
+
+  .fix {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    display: grid;
+    grid-template-columns: 40px 1fr;
+  }
+  .fix-num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    background: var(--surface-2);
+    border-right: 1px solid var(--line);
+    border-radius: 4px 0 0 4px;
+    display: flex;
+    justify-content: center;
+    padding-top: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .fix-body { padding: 14px 18px 16px; min-width: 0; }
+  .loc {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+  .lab {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 3px;
+  }
+  .old {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--muted);
+    margin: 0 0 12px;
+    max-width: 74ch;
+  }
+  .old b { background: var(--bad-bg); color: var(--bad-ink); font-weight: 600; padding: 0 3px; border-radius: 2px; }
+  .newline { display: flex; align-items: flex-start; gap: 14px; }
+  .para {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink);
+    margin: 0;
+    flex: 1 1 auto;
+    max-width: 74ch;
+  }
+  .copy {
+    flex: none;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: opacity .15s ease, background .15s ease;
+  }
+  .copy:hover { opacity: .88; }
+  .copy:focus-visible { outline: 2px solid var(--warm); outline-offset: 2px; }
+  .copy[data-state="done"] { background: var(--warm); }
+  .copy[data-state="fail"] { background: var(--surface); color: var(--ink); border-color: var(--line-2); }
+  .flag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--bad-ink);
+    background: var(--bad-bg);
+    border-radius: 2px;
+    padding: 1px 6px;
+    margin-left: 8px;
+  }
+  .note { font-size: 13px; color: var(--muted); margin: 10px 0 0; max-width: 74ch; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 620px) {
+    .wrap { padding: 36px 16px 72px; }
+    .fix { grid-template-columns: 1fr; }
+    .fix-num { border-right: none; border-bottom: 1px solid var(--line); border-radius: 4px 4px 0 0; padding: 6px 0; }
+    .newline { flex-direction: column; }
+    .copy { width: 100%; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Praca magisterska · korekta językowa</div>
+    <h1>Odwołania w mianowniku</h1>
+    <p class="lede">Word wstawia odsyłacze zawsze jako „Tabela N” i „Rysunek N”, więc zdania muszą być zbudowane pod mianownik. Dziewiętnaście miejsc, w których po aktualizacji pól wyszła zła odmiana.</p>
+  </header>
+
+  <div class="alert">
+    <h2>Osobny problem — pozycje 16 i 17</h2>
+    <p>W tych dwóch miejscach odsyłacz wstawił <strong>cały podpis</strong>, a nie samą etykietę z numerem. W środku zdania siedzi więc „Rysunek 18 Animacja monety, towarzysząca kolejnemu przyrostowi oszczędności” zamiast „Rysunek 18”.</p>
+    <p>Poprawiona treść poniżej zakłada krótką formę. Skasuj stare pole i wstaw je na nowo: Odwołania → Odsyłacz → typ Rysunek (albo Tabela) → <strong>Wstaw odsyłacz do: Tylko etykieta i numer</strong>.</p>
+  </div>
+
+  <div class="rule"></div>
+
+  <section class="fix">
+    <div class="fix-num">1</div>
+    <div class="fix-body">
+      <p class="loc">Analiza wad i zalet istniejących rozwiązań</p>
+      <p class="lab">Jest</p>
+      <p class="old">…formy informacji zwrotnej przekazywanej kierowcy <b>przedstawiono w</b> Tabela 1.</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f1">Zestawienie omówionych rozwiązań pod względem źródła danych, miejsca ich przetwarzania oraz formy informacji zwrotnej przekazywanej kierowcy przedstawia Tabela 1.</p>
+        <button class="copy" data-target="f1">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">2</div>
+    <div class="fix-body">
+      <p class="loc">Przewagi względem opisanych rozwiązań</p>
+      <p class="lab">Jest</p>
+      <p class="old">…względem opisanych wcześniej systemów <b>zestawiono w</b> Tabela 2.</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f2">Wynikające z powyższych cech przewagi proponowanego rozwiązania względem opisanych wcześniej systemów zestawia Tabela 2.</p>
+        <button class="copy" data-target="f2">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">3</div>
+    <div class="fix-body">
+      <p class="loc">Format ramki danych</p>
+      <p class="lab">Jest</p>
+      <p class="old">…ramka danych, której pola <b>zestawiono [1] w</b> Tabela 4.</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f3">Podstawową jednostką transmisji jest ramka danych, której pola zestawia Tabela 4 [1].</p>
+        <button class="copy" data-target="f3">Kopiuj</button>
+      </div>
+      <p class="note">Przypis [1] przesuwa się na koniec zdania — inaczej rozdzielałby orzeczenie od podmiotu.</p>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">4</div>
+    <div class="fix-body">
+      <p class="loc">Koncepcja i architektura systemu</p>
+      <p class="lab">Jest</p>
+      <p class="old">Fazy te są ze sobą powiązane przepływem danych, <b>przedstawionym na</b> Rysunek 2: …</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f4">Fazy te są ze sobą powiązane przepływem danych, który przedstawia Rysunek 2: nagrania zebrane w fazie akwizycji posłużyły do wytrenowania modelu wdrożonego w oprogramowaniu urządzenia.</p>
+        <button class="copy" data-target="f4">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">5</div>
+    <div class="fix-body">
+      <p class="loc">Koncepcja i architektura systemu</p>
+      <p class="lab">Jest</p>
+      <p class="old">Przepływ danych w fazie eksploatacji <b>przedstawiono na</b> Rysunek 3.</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f5">Przepływ danych w fazie eksploatacji przedstawia Rysunek 3.</p>
+        <button class="copy" data-target="f5">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">6</div>
+    <div class="fix-body">
+      <p class="loc">Moduł ESP32-S3-Touch-LCD-4.3B</p>
+      <p class="lab">Jest</p>
+      <p class="old">Pełną specyfikację techniczną modułu <b>zestawiono w</b> Tabela 7.</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f6">Pełną specyfikację techniczną modułu zestawia Tabela 7.</p>
+        <button class="copy" data-target="f6">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">7</div>
+    <div class="fix-body">
+      <p class="loc">Niezawodność i zarządzanie energią</p>
+      <p class="lab">Jest</p>
+      <p class="old">Cykl ten <b>przedstawiono na</b> Rysunek 5.</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f7">Cykl ten przedstawia Rysunek 5.</p>
+        <button class="copy" data-target="f7">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">8</div>
+    <div class="fix-body">
+      <p class="loc">Okna czasowe i ekstrakcja cech</p>
+      <p class="lab">Jest</p>
+      <p class="old">…wektor 20 cech statystycznych, <b>zestawionych w</b> Tabela 11, opisujących rozkład prędkości…</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f8">Dla każdego pozostałego okna wyznaczany jest wektor 20 cech statystycznych, opisujących rozkład prędkości, obrotów silnika, położenia pedałów, przyspieszenia i szarpnięcia w obrębie okna; pełne ich zestawienie zawiera Tabela 11.</p>
+        <button class="copy" data-target="f8">Kopiuj</button>
+      </div>
+      <p class="note">Odwołanie przeniesione na koniec, bo wtrącenie w środku wymuszało dwa różne przypadki naraz.</p>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">9</div>
+    <div class="fix-body">
+      <p class="loc">Trening i walidacja modeli</p>
+      <p class="lab">Jest</p>
+      <p class="old">Wyniki klasyfikacji modelu RandomForest na zbiorze testowym <b>zestawiono w</b> Tabela 15.</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f9">Wyniki klasyfikacji modelu RandomForest na zbiorze testowym zestawia Tabela 15.</p>
+        <button class="copy" data-target="f9">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">10</div>
+    <div class="fix-body">
+      <p class="loc">Trening i walidacja modeli</p>
+      <p class="lab">Jest</p>
+      <p class="old">Wyniki, <b>zestawione w</b> Tabela 17, wskazują na wyraźną przewagę…</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f10">Wyniki, które zestawia Tabela 17, wskazują na wyraźną przewagę modelu RandomForest — zarówno pod względem średniej jakości klasyfikacji, jak i znacznie mniejszego rozrzutu wyników między foldami, co świadczy o mniejszej wrażliwości na konkretny podział danych.</p>
+        <button class="copy" data-target="f10">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">11</div>
+    <div class="fix-body">
+      <p class="loc">Trening i walidacja modeli</p>
+      <p class="lab">Jest</p>
+      <p class="old">Ważność poszczególnych cech…, <b>zestawiona w</b> Tabela 18, wskazuje, że…</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f11">Ważność poszczególnych cech dla wytrenowanego modelu RandomForest, którą zestawia Tabela 18, wskazuje, że o klasyfikacji stylu jazdy decyduje przede wszystkim gwałtowność wciskania pedału gazu (throttle_dp95) — co nie jest zaskakujące, skoro cecha ta wprost współokreśla granicę etykiety jazdy agresywnej (podrozdział 4.7) — a w dalszej kolejności średnie położenie pedału gazu oraz cechy opisujące prędkość i przyspieszenie pojazdu.</p>
+        <button class="copy" data-target="f11">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">12</div>
+    <div class="fix-body">
+      <p class="loc">Struktura oprogramowania</p>
+      <p class="lab">Jest</p>
+      <p class="old">Odpowiedzialności rozdzielono pomiędzy moduły <b>zestawione w</b> Tabela 19, z których każdy…</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f12">Podział odpowiedzialności pomiędzy moduły przedstawia Tabela 19. Każdy z nich odpowiada za spójny, niezależny fragment funkcjonalności urządzenia.</p>
+        <button class="copy" data-target="f12">Kopiuj</button>
+      </div>
+      <p class="note">Rozbite na dwa zdania — inaczej wychodziło „moduły, które zestawia…, z których każdy…”.</p>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">13</div>
+    <div class="fix-body">
+      <p class="loc">Struktura oprogramowania</p>
+      <p class="lab">Jest</p>
+      <p class="old">…bez rozjazdu między poszczególnymi modułami <b>— schemat tego przepływu przedstawiono na</b> Rysunek 13</p>
+      <p class="lab">Ma być — podmień samą końcówkę zdania</p>
+      <div class="newline">
+        <p class="para" id="f13">bez rozjazdu między poszczególnymi modułami. Schemat tego przepływu przedstawia Rysunek 13.</p>
+        <button class="copy" data-target="f13">Kopiuj</button>
+      </div>
+      <p class="note">Przy okazji dochodzi brakująca kropka na końcu — obecnie zdanie urywa się bez niej.</p>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">14</div>
+    <div class="fix-body">
+      <p class="loc">Moduł statystyk oszczędności</p>
+      <p class="lab">Jest</p>
+      <p class="old">Parametry tego modelu <b>zestawiono w</b> Tabela 20.</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f14">Parametry tego modelu zestawia Tabela 20.</p>
+        <button class="copy" data-target="f14">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">15</div>
+    <div class="fix-body">
+      <p class="loc">Mechanizmy nudgingu i gamifikacji</p>
+      <p class="lab">Jest</p>
+      <p class="old">…roślina przechodząca kolejne, <b>zestawione w</b> Tabela 21 etapy wzrostu w miarę utrzymywania jazdy ekonomicznej…</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f15">Zamiast liczbowego wskaźnika, który wymagałby od kierowcy interpretacji i odrywania uwagi od drogi, prezentowana jest roślina przechodząca w miarę utrzymywania jazdy ekonomicznej kolejne etapy wzrostu, które zestawia Tabela 21 — od niepozornego kiełka, przez kolejne stadia rozwoju, aż po w pełni rozwinięte, kwitnące i owocujące drzewo.</p>
+        <button class="copy" data-target="f15">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">16</div>
+    <div class="fix-body">
+      <p class="loc">Mechanizmy nudgingu i gamifikacji <span class="flag">pole do wymiany</span></p>
+      <p class="lab">Jest</p>
+      <p class="old">…krótka animacja monety, <b>pokazana na Rysunek 18 Animacja monety, towarzysząca kolejnemu przyrostowi oszczędności.</b> — naśladując mechanizmy…</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f16">Oszczędności wynikające z jazdy ekonomicznej (podrozdział 4.9) prezentowane są kierowcy na bieżąco w formie rosnącej kwoty nad drzewkiem, a każdemu kolejnemu, zauważalnemu przyrostowi oszczędności towarzyszy krótka animacja monety, którą pokazuje Rysunek 18 — naśladując mechanizmy natychmiastowej, namacalnej nagrody typowe dla gier, zgodnie z zasadą gamifikacji.</p>
+        <button class="copy" data-target="f16">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">17</div>
+    <div class="fix-body">
+      <p class="loc">Ekrany systemu <span class="flag">pole do wymiany</span></p>
+      <p class="lab">Jest</p>
+      <p class="old">Interfejs podzielony jest na cztery ekrany, dostępne w kolejności <b>zestawionej w Tabela 22 Ekrany interfejsu użytkownika.</b></p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f17">Interfejs podzielony jest na cztery ekrany, których kolejność zestawia Tabela 22.</p>
+        <button class="copy" data-target="f17">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">18</div>
+    <div class="fix-body">
+      <p class="loc">Ekrany systemu</p>
+      <p class="lab">Jest</p>
+      <p class="old">…sygnałów odbieranych z magistrali CAN i <b>zestawionych wcześniej w</b> Tabela 8 (podrozdział 4.5): … — <b>pokazaną na</b> Rysunek 24.</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f18">Ekran przedstawia siatkę kafelków z aktualnymi wartościami wszystkich sygnałów odbieranych z magistrali CAN, które zestawia Tabela 8 (podrozdział 4.5): prędkości pojazdu, obrotów silnika, położenia pedałów gazu i hamulca, poziomu oraz zużycia paliwa, przebiegu, zasięgu, temperatury oleju, stanu biegu wstecznego i statusu układu ESP. Ekran ten pokazuje Rysunek 24.</p>
+        <button class="copy" data-target="f18">Kopiuj</button>
+      </div>
+      <p class="note">Dwa odwołania w jednym zdaniu — rozbite na dwa, bo odsyłacz do rysunku odnosił się do siatki kafelków sprzed długiego wyliczenia.</p>
+    </div>
+  </section>
+
+  <section class="fix">
+    <div class="fix-num">19</div>
+    <div class="fix-body">
+      <p class="loc">Ekrany systemu</p>
+      <p class="lab">Jest</p>
+      <p class="old">…podzielone na cztery grupy <b>widoczne na</b> Rysunek 25.</p>
+      <p class="lab">Ma być</p>
+      <div class="newline">
+        <p class="para" id="f19">Ostatni ekran skupia funkcje konfiguracyjne i pomocnicze, podzielone na cztery grupy, które pokazuje Rysunek 25.</p>
+        <button class="copy" data-target="f19">Kopiuj</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="alert">
+    <h2>Jak wklejać</h2>
+    <p>W każdym zdaniu odwołanie jest polem — wklejenie całego zdania jako tekstu zamieni je w sztywny numer. Wklej zdanie, a potem skasuj wpisane na sztywno „Tabela N” lub „Rysunek N” i wstaw w to miejsce odsyłacz: Odwołania → Odsyłacz → Tylko etykieta i numer.</p>
+    <p>Szybsza droga tam, gdzie zmiana jest drobna (pozycje 1, 2, 5, 6, 7, 9, 14): nie wklejaj całego zdania, tylko popraw same słowa przed polem — „przedstawiono w” na „przedstawia”, „zestawiono w” na „zestawia”, „przedstawiono na” na „przedstawia”. Pole zostaje wtedy nietknięte.</p>
+  </div>
+
+</div>
+
+<script>
+  function proseText(el) {
+    return el.textContent.replace(/\s+/g, " ").trim();
+  }
+
+  function flash(btn, label, state) {
+    var original = btn.dataset.label || btn.textContent;
+    btn.dataset.label = original;
+    btn.textContent = label;
+    btn.setAttribute("data-state", state);
+    window.setTimeout(function () {
+      btn.textContent = original;
+      btn.removeAttribute("data-state");
+    }, 1600);
+  }
+
+  function legacyCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest(".copy");
+    if (!btn) return;
+    var el = document.getElementById(btn.dataset.target);
+    if (!el) return;
+    var text = proseText(el);
+
+    var done = function () { flash(btn, "Skopiowano", "done"); };
+    var failed = function () {
+      if (legacyCopy(text)) { done(); }
+      else { flash(btn, "Zaznacz ręcznie", "fail"); }
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(failed);
+    } else {
+      failed();
+    }
+  });
+</script>

@@ -1,4 +1,446 @@
 \clearpage % Rozdziały zaczynamy od nowej strony.
 \section{Wstęp}
 
+Rozwój elektroniki pojazdowej sprawił, że współczesny samochód dysponuje dziesiątkami
+czujników i elektronicznych jednostek sterujących (ECU), które w czasie rzeczywistym
+rejestrują parametry pracy silnika, układu hamulcowego, przekładni oraz wielu innych
+podzespołów. Dane te, przesyłane najczęściej magistralą CAN~\cite{bosch1991}, od dawna
+wykorzystywane są przez producentów pojazdów do diagnostyki i sterowania, jednak
+w ostatnich latach coraz częściej stają się też podstawą analizy samego kierowcy ---
+sposobu, w jaki prowadzi on pojazd. Styl jazdy ma bowiem bezpośredni, mierzalny wpływ na
+koszty eksploatacji, emisję spalin oraz bezpieczeństwo ruchu drogowego. Badania
+przeprowadzone przez Oak Ridge National Laboratory na zlecenie amerykańskiego
+Departamentu Energii wykazały, że agresywny styl jazdy --- gwałtowne przyspieszanie
+i hamowanie --- może zwiększyć zużycie paliwa nawet o 10--40\% w ruchu miejskim oraz
+o 15--30\% przy prędkościach charakterystycznych dla tras szybkiego ruchu, w porównaniu
+do jazdy spokojnej i płynnej~\cite{thomas2017}. Skala tego zjawiska sprawia, że
+informowanie kierowcy o jego stylu jazdy oraz motywowanie go do jazdy ekonomicznej
+i bezpiecznej stało się osobnym, aktywnie rozwijanym kierunkiem zarówno w przemyśle
+motoryzacyjnym, jak i w badaniach naukowych.
 
+Równolegle do rozwoju samej elektroniki pojazdowej dynamicznie rozwija się rynek
+systemów telematycznych --- rozwiązań łączących zbieranie danych z pojazdu, ich
+transmisję oraz analizę, najczęściej z wykorzystaniem chmury obliczeniowej.
+Zastosowania takich systemów obejmują zarządzanie flotami pojazdów, ubezpieczenia
+komunikacyjne taryfikowane na podstawie rzeczywistego stylu jazdy (UBI), w których
+wysokość składki zależy bezpośrednio od zarejestrowanych podczas jazdy parametrów,
+a nie wyłącznie od statystycznych cech kierowcy takich jak wiek, staż czy dotychczasowa
+historia szkód, a także aplikacje konsumenckie, których celem jest poprawa nawyków
+kierowcy. Wspólnym
+mianownikiem większości dostępnych na rynku rozwiązań jest jednak zależność od
+łączności sieciowej oraz przetwarzania danych poza pojazdem --- na serwerach dostawcy
+usługi. Ocena stylu jazdy jest w takich systemach zwykle wynikiem analizy wykonywanej
+po zakończeniu przejazdu lub w chmurze w czasie zbliżonym do rzeczywistego, rzadziej zaś
+efektem wnioskowania realizowanego bezpośrednio na pokładzie pojazdu, bez udziału
+zewnętrznej infrastruktury. Taka architektura, choć wygodna z punktu widzenia dostawcy
+usługi (możliwość centralnego gromadzenia danych, aktualizacji algorytmów, rozliczeń
+abonamentowych), wiąże funkcjonowanie urządzenia pokładowego z ciągłą dostępnością
+łączności komórkowej oraz z istnieniem samej usługi w czasie --- co, jak pokazano
+w dalszej części tego rozdziału, w praktyce bywa istotnym ograniczeniem.
+
+Innym istotnym nurtem badawczym jest wykorzystanie metod uczenia maszynowego do
+automatycznej klasyfikacji stylu jazdy na podstawie danych pojazdowych lub danych
+z czujników inercyjnych. Podejścia takie pozwalają zastąpić proste, progowe reguły
+(np. wykrywanie przekroczenia zadanej wartości przyspieszenia) modelami zdolnymi do
+jednoczesnego uwzględnienia wielu, często wzajemnie skorelowanych cech jazdy, co
+przekłada się na trafniejszą i bardziej odporną na przypadkowe zdarzenia ocenę
+zachowania kierowcy~\cite{meiring2015}. Równocześnie coraz więcej uwagi poświęca się nie
+tylko samej ocenie stylu jazdy, ale też sposobowi przekazania jej kierowcy. Badania
+z zakresu ekonomii behawioralnej i projektowania gier wskazują, że mechanizmy
+motywacyjne, nagradzające pożądane zachowania, są skuteczniejszą formą oddziaływania na
+nawyki niż komunikaty ostrzegawcze i informacje o błędach~\cite{thaler2008,deterding2011}.
+Połączenie tych dwóch obserwacji --- że jakość danych wejściowych i metoda ich analizy
+determinują trafność oceny, a forma przekazania wyniku determinuje jej rzeczywisty
+wpływ na zachowanie kierowcy --- stanowi punkt wyjścia dla rozwiązania opisanego
+w niniejszej pracy.
+
+Opisane w niniejszej pracy rozwiązanie łączy trzy elementy omówione powyżej:
+wykorzystanie rzeczywistych danych pojazdowych z magistrali CAN (a nie danych
+z czujników smartfona), klasyfikację stylu jazdy metodą uczenia maszynowego (a nie
+prostych reguł progowych) oraz przekazanie wyniku kierowcy w formie zgamifikowanej,
+motywującej informacji zwrotnej (a nie liczbowego wskaźnika lub komunikatu
+ostrzegawczego) --- realizowane w całości lokalnie, na pokładzie pojazdu, bez
+konieczności stałej łączności sieciowej ani przesyłania danych na zewnątrz. W dalszej
+części niniejszego rozdziału przedstawiono przegląd wybranych rozwiązań dostępnych
+obecnie na rynku, naukowe uzasadnienie przyjętych
+w pracy metod, a następnie omówiono
+proponowane w pracy rozwiązanie wraz z jego przewagami względem opisanych alternatyw.
+
+\subsection{Przegląd istniejących rozwiązań}
+\label{sec:przeglad}
+
+Systemy analizujące styl jazdy kierowcy można podzielić na kilka kategorii, różniących
+się przede wszystkim źródłem danych (czujniki smartfona, złącze OBD, bezpośredni dostęp
+do magistrali CAN), miejscem przetwarzania (chmura, aplikacja mobilna, urządzenie
+pokładowe) oraz sposobem prezentacji wyniku kierowcy (liczbowy wskaźnik, ranking,
+informacja zwrotna w czasie rzeczywistym). W niniejszym podrozdziale omówiono trzy
+reprezentatywne przykłady z tych kategorii: komercyjną platformę telematyczną opartą
+na czujnikach smartfona, historyczny, lecz wciąż często przywoływany w literaturze
+system wykorzystujący dane z sieci pokładowej pojazdu, a także rozwiązania telematyki
+flotowej i ubezpieczeniowej.
+
+\subsubsection{Platformy telematyczne oparte na czujnikach smartfona}
+
+Największą grupę wdrożeń komercyjnych stanowią dziś systemy wykorzystujące wyłącznie
+czujniki wbudowane w smartfon kierowcy --- akcelerometr, żyroskop oraz odbiornik GPS ---
+bez potrzeby instalowania jakiegokolwiek dodatkowego sprzętu w pojeździe. Przykładem
+takiego podejścia jest platforma DriveWell firmy Cambridge Mobile Telematics,
+wykorzystywana przez wielu ubezpieczycieli do wdrażania ubezpieczeń UBI. Aplikacja
+instalowana na telefonie kierowcy zbiera dane z czujników ruchu i lokalizacji, na ich
+podstawie wykrywa m.in. gwałtowne hamowanie, przekraczanie prędkości oraz rozproszenie
+uwagi kierowcy wynikające z korzystania z telefonu w trakcie jazdy, a następnie
+przypisuje przejazdowi ocenę w skali od 1 do 100~\cite{cmtelematics}. Wyniki są
+przekazywane kierowcy w formie punktowej oraz motywacyjnej (system nagród za dobre
+przejazdy), a producent deklaruje, że regularne korzystanie z aplikacji ogranicza
+rozproszenie uwagi kierowcy o ok. 35\%, a przypadki przekraczania prędkości i
+gwałtownego hamowania o ok. 20\%~\cite{cmtelematics}. Platforma umożliwia też
+opcjonalne podłączenie dedykowanych urządzeń (tzw. Tags) w celu podniesienia
+dokładności pomiaru, co producent wprost wskazuje jako sposób na ograniczenie
+niedokładności wynikającej z samych tylko czujników telefonu~\cite{cmtelematics}.
+Rozwiązanie to ewoluowało w kierunku łączenia (fuzji) danych z wielu niezależnych
+źródeł jednocześnie --- oprócz smartfona i wspomnianych urządzeń Tags, platforma
+DriveWell obsługuje również dane z rejestratorów jazdy (dashcam) oraz z modułów
+łączności wbudowanych fabrycznie w nowsze pojazdy, a mechanizm automatycznej
+identyfikacji kierowcy i pasażerów pozwala przypisać zarejestrowany przejazd
+właściwej osobie bez ręcznej konfiguracji~\cite{cmtelematics}. Takie podejście dobrze
+ilustruje ogólny kierunek rozwoju komercyjnych platform telematycznych: zamiast
+pojedynczego źródła danych, systemy te dążą do łączenia wielu niezależnych, z osobna
+niedoskonałych źródeł w celu skompensowania ograniczeń każdego z nich.
+
+Zaletą tego podejścia jest brak konieczności ingerencji w instalację elektryczną
+pojazdu oraz niski koszt wdrożenia --- jedynym wymaganym elementem jest smartfon,
+którym dysponuje niemal każdy kierowca. Istotnym ograniczeniem jest jednak jakość
+i wiarygodność danych źródłowych: pomiary przyspieszenia wykonywane czujnikami
+smartfona zależą od sposobu jego zamocowania w pojeździe, mogą być zakłócone przez ruch
+samego telefonu (np. swobodnie leżącego na siedzeniu) i nie odzwierciedlają bezpośrednio
+parametrów pracy pojazdu, takich jak rzeczywista prędkość obrotowa silnika, położenie
+pedału przyspieszenia czy ciśnienie w układzie hamulcowym, dostępnych natywnie na
+magistrali CAN. Ocena stylu jazdy odbywa się ponadto po stronie serwera dostawcy usługi,
+co oznacza zależność od łączności sieciowej oraz przesyłanie danych o lokalizacji
+i sposobie jazdy poza pojazd.
+
+\subsubsection{System Fiat eco:Drive}
+
+Interesującym, choć już historycznym przykładem systemu wykorzystującego bezpośrednio
+dane z sieci pokładowej pojazdu jest aplikacja eco:Drive, zaprezentowana przez Fiata
+na salonie samochodowym w Paryżu w 2008 roku~\cite{fiatecodrive}. W odróżnieniu od
+rozwiązań opartych na smartfonie, eco:Drive korzystała z danych rejestrowanych
+bezpośrednio w sieci pokładowej pojazdu, obejmujących m.in. użyty bieg, obroty silnika
+oraz sposób korzystania z pedałów przyspieszenia i hamulca, zapisywanych na karcie
+pamięci USB i wgrywanych po zakończeniu jazdy do aplikacji na komputerze
+osobistym~\cite{fiatecodrive}. Aplikacja wskazywała kierowcy konkretne fragmenty
+przejazdu, w których styl jazdy odbiegał od ekonomicznego (np. zbyt intensywne
+przyspieszanie lub jazda na zbyt niskim biegu), a w rozszerzonej wersji eco:Drive
+Social, zaprezentowanej podczas salonu samochodowego we Frankfurcie, wprowadzono
+elementy gamifikacji oparte na dynamice społecznościowej --- odznaki potwierdzające
+dobre nawyki za kierownicą oraz ranking społecznościowy porównujący kierowców między
+sobą~\cite{fiatecodrivesocial}.
+Istotną cechą eco:Drive, odróżniającą ją od generycznych porad dotyczących
+oszczędnej jazdy, była szczegółowość informacji zwrotnej: aplikacja nie ograniczała się
+do ogólnego zalecenia w rodzaju \emph{jeźdź spokojniej}, lecz precyzyjnie wskazywała,
+w którym konkretnie przejeździe i w którym jego fragmencie kierowca przyspieszał zbyt
+gwałtownie lub jechał na niewłaściwym biegu~\cite{fiatecodrive}. Aplikację, dostępną na
+wielu platformach dzięki wykorzystaniu środowiska Adobe Air, opracowała na zlecenie
+Fiata brytyjska agencja konsultingowa AKQA~\cite{fiatecodrive}.
+Zebrane przez Fiata dane z rzeczywistej eksploatacji wykazały średnio 6-procentową
+redukcję zużycia paliwa wśród użytkowników aplikacji, sięgającą 16\% w grupie 10\%
+kierowców, którzy najbardziej poprawili swój styl jazdy~\cite{fiatecodrive}.
+
+System ten pozostaje istotnym punktem odniesienia dla niniejszej pracy z dwóch powodów:
+wykorzystuje dane pojazdowe analogiczne do wykorzystywanych w opisywanym dalej
+rozwiązaniu, a jednocześnie stosuje elementy gamifikacji zamiast prostych komunikatów
+ostrzegawczych. Jego zasadniczym ograniczeniem jest jednak brak informacji zwrotnej
+w czasie rzeczywistym --- analiza i wizualizacja wyników odbywały się dopiero po
+zakończeniu jazdy, na osobnym urządzeniu (komputerze osobistym), co znacząco ogranicza
+możliwość bieżącej korekty zachowania za kierownicą w trakcie samej jazdy.
+
+\subsubsection{Telematyka flotowa i ubezpieczeniowa}
+
+Odrębną kategorię stanowią systemy telematyki flotowej, projektowane z myślą
+o zarządcach dużych flot pojazdów, a nie o indywidualnym kierowcy. Przykładem jest
+platforma firmy Geotab, w której urządzenie podłączane do złącza OBD rejestruje
+i przesyła do chmury nawet ponad 250 punktów danych na sekundę, obejmujących
+m.in. przekroczenia prędkości, gwałtowne hamowanie, gwałtowne przyspieszanie oraz
+gwałtowne pokonywanie zakrętów~\cite{geotab}. Zdarzenia te wykrywane są na podstawie
+progów wartości przyspieszenia skalibrowanych względem klasy pojazdu, a wynikowa ocena
+bezpieczeństwa jazdy prezentowana jest zarządcy floty w panelu przeglądarkowym, wraz
+z możliwością konfiguracji alertów w czasie rzeczywistym~\cite{geotab}. Tak zebrane dane
+wykorzystywane są przede wszystkim do coachingu kierowców przez zarządcę floty oraz do
+budowania rankingów porównujących poszczególnych kierowców lub całe floty względem
+grupy odniesienia --- producent przywołuje przykład floty, która dzięki takiemu
+podejściu podniosła swoją średnią ocenę bezpieczeństwa jazdy do 88 punktów na 100,
+uzyskując wynik o 6\% lepszy niż średnia najlepszych flot z tej samej grupy
+porównawczej~\cite{geotab}. W odróżnieniu od podejść opisanych wcześniej, ocena stylu
+jazdy opiera się tu jednak na prostych regułach progowych, a nie na modelu uczenia
+maszynowego, zaś odbiorcą informacji zwrotnej jest przede wszystkim zarządca floty,
+nie sam kierowca prowadzący pojazd w danej chwili.
+
+Zbliżoną architekturę, adresowaną jednak do klienta indywidualnego, prezentowało
+urządzenie Automatic --- podłączany do złącza OBD moduł komunikujący się bezprzewodowo
+ze smartfonem, który udostępniał m.in. powiadomienia o wypadku, historię przejazdów,
+diagnostykę pojazdu oraz cotygodniową, zbiorczą ocenę stylu jazdy, wyliczaną na
+podstawie zdarzeń zarejestrowanych i przetworzonych przez producenta usługi w chmurze.
+Wokół urządzenia zbudowano ponadto ekosystem integracji z aplikacjami zewnętrznymi,
+umożliwiający m.in. automatyczne rejestrowanie przejazdów służbowych na potrzeby
+rozliczeń podatkowych czy udostępnianie danych o lokalizacji pojazdu innym usługom ---
+co w praktyce oznaczało, że wartość urządzenia dla użytkownika wykraczała poza samą
+ocenę stylu jazdy i obejmowała całą warstwę usług zbudowanych wokół danych z pojazdu.
+Usługa ta, mimo dużej popularności, została jednak całkowicie wyłączona w 2020~roku,
+a wraz z nią przestały działać wszystkie należące do niej urządzenia --- decyzję tę
+producent uzasadnił brakiem rentowności usługi w obliczu spadku sprzedaży i wynajmu
+pojazdów w okresie pandemii~\cite{automaticlabs}. Przypadek ten dobrze ilustruje istotną
+wadę modelu, w którym funkcjonalność urządzenia pokładowego jest trwale uzależniona od
+dostępności usługi chmurowej dostawcy: zaprzestanie działania serwera dostawcy oznacza
+całkowitą utratę funkcjonalności sprzętu, niezależnie od jego sprawności technicznej.
+
+\subsubsection{Analiza wad i zalet istniejących rozwiązań}
+
+Zestawienie omówionych rozwiązań pod względem źródła danych, miejsca ich przetwarzania
+oraz formy informacji zwrotnej przekazywanej kierowcy przedstawiono w
+tabeli~\ref{tab:analiza-rozwiazan}. Wynika z niego, że żadne z analizowanych rozwiązań
+nie łączy jednocześnie danych z magistrali CAN, przetwarzania lokalnego (bez zależności
+od łączności sieciowej) oraz gamifikowanej informacji zwrotnej dostępnej w czasie
+rzeczywistym. Rozwiązanie oparte na czujnikach smartfona (DriveWell) cierpi na
+niedokładność pomiaru wynikającą z pośredniego charakteru danych. Rozwiązania
+wykorzystujące rzeczywiste dane pojazdowe (eco:Drive, Geotab) nie oferują natomiast
+informacji zwrotnej w czasie rzeczywistym bezpośrednio w pojeździe --- analiza odbywa
+się po zakończeniu jazdy (eco:Drive) albo trafia wyłącznie do zarządcy floty, z pominięciem
+samego kierowcy (Geotab). Wszystkie trzy omówione rozwiązania zależne są ponadto od
+chmury obliczeniowej dostawcy usługi, co wiąże trwałość działania urządzenia
+z istnieniem tej usługi w czasie --- co w przypadku Automatic doprowadziło do
+całkowitej utraty funkcjonalności sprzętu użytkowników po wycofaniu usługi przez
+producenta.
+
+Drugą, niezależną od źródła danych osią podziału jest moment, w którym kierowca
+otrzymuje informację zwrotną o swoim stylu jazdy. We wszystkich trzech omówionych
+rozwiązaniach informacja ta dociera do kierowcy dopiero po zakończeniu przejazdu ---
+w formie zbiorczej oceny liczbowej (DriveWell, Automatic), raportu analizowanego po
+podłączeniu urządzenia do komputera (eco:Drive) lub w ogóle nie dociera bezpośrednio
+do kierowcy, lecz do osoby trzeciej zarządzającej flotą (Geotab). Taki retrospektywny
+charakter informacji zwrotnej ogranicza możliwość natychmiastowej korekty zachowania
+w chwili, w której do niekorzystnego zdarzenia faktycznie dochodzi --- kierowca
+dowiaduje się o popełnionym błędzie dopiero po fakcie, gdy nie ma już możliwości
+bezpośredniego powiązania oceny z konkretną decyzją podjętą za kierownicą.
+
+\begin{table}[!h]
+    \centering
+    \caption{Zestawienie porównawcze przeglądniętych rozwiązań analizy stylu jazdy.}
+    \label{tab:analiza-rozwiazan}
+    \begin{tabular}{| p{2.6cm} | p{2.6cm} | p{2.6cm} | p{2.5cm} | p{3.0cm} |} \hline
+        \textbf{Rozwiązanie} & \textbf{Źródło danych} & \textbf{Metoda oceny} & \textbf{Miejsce przetwarzania} & \textbf{Informacja zwrotna} \\ \hline\hline
+        DriveWell (CMT)~\cite{cmtelematics} & czujniki smartfona (GPS, akcelerometr) & reguły + modele w~chmurze & chmura dostawcy usługi & wynik liczbowy (1--100), po zakończeniu jazdy \\ \hline
+        Fiat eco:Drive~\cite{fiatecodrive,fiatecodrivesocial} & magistrala pojazdu (bieg, obroty, pedały) & reguły progowe & aplikacja PC (po jeździe) & gamifikacja (odznaki, ranking), po zakończeniu jazdy \\ \hline
+        Geotab~\cite{geotab} & OBD (przyspieszenie, prędkość) & reguły progowe & chmura dostawcy usługi & panel dla zarządcy floty, nie dla kierowcy \\ \hline
+        Automatic~\cite{automaticlabs} & OBD + smartfon & reguły w~chmurze & chmura dostawcy usługi (usługa wycofana) & ocena tygodniowa w~aplikacji \\ \hline
+        \textbf{Proponowane rozwiązanie} & \textbf{magistrala CAN} & \textbf{uczenie maszynowe} & \textbf{lokalnie, na~pokładzie pojazdu} & \textbf{gamifikacja w~czasie rzeczywistym} \\ \hline
+    \end{tabular}
+\end{table}
+
+\subsection{Naukowe uzasadnienie przyjętych metod}
+\label{sec:uzasadnienie-metod}
+
+Niezależnie od rozwiązań komercyjnych omówionych w podrozdziale~\ref{sec:przeglad},
+zastosowanie w niniejszej pracy dwóch rozwiązań metodycznych --- klasyfikacji stylu
+jazdy za pomocą algorytmów uczenia maszynowego oraz gamifikacji jako formy prezentacji
+wyniku tej klasyfikacji kierowcy --- znajduje uzasadnienie w wynikach badań
+naukowych publikowanych w literaturze przedmiotu. W dalszej części podrozdziału
+scharakteryzowano stan wiedzy w obu tych obszarach, przywołując konkretne wyniki
+badawcze potwierdzające skuteczność każdego z tych podejść.
+
+\subsubsection{Klasyfikacja stylu jazdy metodami uczenia maszynowego}
+
+Skuteczność klasyfikacji stylu jazdy metodami uczenia maszynowego potwierdza bogata
+literatura naukowa. Meiring i Myburgh w obszernym przeglądzie systematyzują stosowane
+w tym obszarze metody sztucznej inteligencji, wskazując na rosnącą przewagę podejść
+opartych na uczeniu maszynowym nad prostymi regułami progowymi, wynikającą z ich
+zdolności do jednoczesnego uwzględnienia wielu, często wzajemnie skorelowanych cech
+jazdy~\cite{meiring2015}. W ramach przeglądu autorzy wskazują w szczególności na
+obiecujący potencjał metod opartych na logice rozmytej, ukrytych modelach Markowa
+oraz maszynach wektorów nośnych, zastrzegając jednocześnie, że praktyczne
+zastosowanie tych metod do jednoznacznej identyfikacji indywidualnego kierowcy wymaga
+dalszego ograniczenia złożoności obliczeniowej modeli~\cite{meiring2015}. Bejani
+i Ghatee zaproponowali system oceny stylu jazdy wykorzystujący uczenie zespołowe (ang.
+\emph{ensemble learning}) na danych z czujników smartfona, uwzględniający dodatkowo
+kontekst jazdy (np.\ rodzaj drogi), co pozwoliło ograniczyć liczbę błędnych klasyfikacji
+wynikających z bezpośredniego porównywania jazdy miejskiej i autostradowej według tych
+samych kryteriów~\cite{bejani2018}. W zaproponowanym przez nich podejściu, opartym na
+logice neuronowo-rozmytej, styl jazdy klasyfikowany jest na podstawie podobieństwa
+zarejestrowanego przebiegu do wzorcowych profili rozmytych, wyznaczonych statystycznie
+na podstawie danych z czujników smartfona~\cite{bejani2018}. Khan
+i inni wykorzystali z kolei dane pochodzące bezpośrednio z magistrali CAN pojazdu do
+identyfikacji kierowcy metodami uczenia maszynowego, potwierdzając, że parametry
+rejestrowane natywnie przez sieć pokładową pojazdu (m.in.\ prędkość, obroty silnika,
+położenie przepustnicy) niosą wystarczająco dużo informacji do skutecznej klasyfikacji
+zachowań za kierownicą, bez konieczności sięgania po dodatkowe czujniki
+inercyjne~\cite{khan2022}.
+
+Przywołane prace potwierdzają dwa istotne dla niniejszej pracy założenia: po pierwsze,
+że modele uczenia maszynowego skuteczniej niż proste reguły progowe radzą sobie
+z klasyfikacją stylu jazdy dzięki zdolności do jednoczesnego uwzględnienia wielu
+skorelowanych cech, a po drugie, że dane rejestrowane natywnie na magistrali CAN
+pojazdu stanowią samodzielnie wystarczające i wiarygodne źródło do takiej klasyfikacji.
+Na tych właśnie założeniach oparto wybór metody klasyfikacji zastosowanej
+w opracowywanym systemie, opisanej szczegółowo w rozdziale~\ref{sec:trening}.
+
+\subsubsection{Gamifikacja informacji zwrotnej o stylu jazdy}
+
+Drugim filarem metodycznym niniejszej pracy jest przekazanie wyniku klasyfikacji
+kierowcy w formie zgamifikowanej. Teoretyczne podstawy takiego podejścia wywodzą się
+z koncepcji nudgingu, sformułowanej przez Thalera i Sunsteina w ramach tzw.
+paternalizmu libertariańskiego. Nudging definiowany jest jako dowolny element
+architektury wyboru, który w przewidywalny sposób modyfikuje zachowanie ludzi, nie
+zakazując przy tym żadnej z dostępnych opcji ani nie zmieniając w istotny sposób
+bodźców ekonomicznych związanych z podejmowaną decyzją~\cite{thaler2008}. Klasycznym
+przykładem takiego mechanizmu jest zmiana domyślnej opcji wyboru --- np.\ ustawienie
+domyślnego uczestnictwa w programie emerytalnym jako \emph{aktywne} zamiast
+\emph{nieaktywne} istotnie zwiększa liczbę uczestników programu, mimo że możliwość
+rezygnacji pozostaje w pełni dostępna~\cite{thaler2008}. W odróżnieniu
+od zakazów, kar czy komunikatów ostrzegawczych, nudge oddziałuje na decyzję poprzez
+zmianę sposobu prezentacji informacji lub kontekstu, w którym decyzja jest
+podejmowana --- np.\ poprzez natychmiastową, pozytywną informację zwrotną o pożądanym
+zachowaniu zamiast sygnalizowania błędów. Pokrewnym pojęciem, wykorzystanym
+równolegle w niniejszej pracy, jest gamifikacja, definiowana jako zastosowanie
+elementów typowo kojarzonych z grami (punktacji, poziomów zaawansowania, odznak,
+rankingów) w kontekście niezwiązanym z rozrywką, w celu zwiększenia zaangażowania
+użytkownika~\cite{deterding2011}. Oba pojęcia, choć wywodzące się z różnych
+dziedzin --- ekonomii behawioralnej oraz projektowania gier --- opierają się na
+wspólnym założeniu, że motywowanie poprzez nagradzanie pożądanych zachowań jest
+skuteczniejszą formą oddziaływania na nawyki niż komunikaty ostrzegawcze i informacje
+o błędach~\cite{thaler2008,deterding2011}. Założenie to znajduje potwierdzenie również
+w badaniach dotyczących bezpośrednio stylu jazdy. Vitiello i inni przeprowadzili
+pilotażowe badanie rzeczywistego wdrożenia aplikacji mobilnej łączącej analizę stylu
+jazdy w czasie rzeczywistym z elementami gamifikacji, potwierdzając pozytywny wpływ
+takiego podejścia na trwałość zmiany nawyków kierowców w porównaniu z przekazywaniem
+samej tylko oceny liczbowej~\cite{vitiello2023}. Podobne podejście zaprezentowali
+Avolicino i inni w systemie EcoGO, w którym ranking, punktacja oraz poziomy
+zaawansowania towarzyszą informacji zwrotnej przekazywanej kierowcy w czasie
+rzeczywistym na podstawie prędkości oraz intensywności przyspieszania
+i hamowania~\cite{avolicino2022}. Obie prace potwierdzają empirycznie tezę formułowaną
+na gruncie ekonomii behawioralnej i projektowania gier, a jednocześnie pokazują, że
+sama poprawa stylu jazdy przekłada się wymiernie na ograniczenie zużycia paliwa
+i emisji spalin~\cite{barkenbus2010}.
+
+Przywołane badania, podobnie jak wcześniej opisany przykład systemu Fiat
+eco:Drive~(podrozdział~\ref{sec:przeglad}), potwierdzają zasadność zastosowania
+gamifikacji w interfejsie opracowywanego systemu. W obu przywołanych pracach
+gamifikowana informacja zwrotna realizowana jest w formie osobnej aplikacji mobilnej,
+korzystającej z danych czujników smartfona --- w niniejszej pracy to samo podejście
+motywacyjne zastosowano natomiast w oparciu o dane z magistrali CAN pojazdu oraz
+zintegrowany z nim, a nie zewnętrzny, wyświetlacz, co szczegółowo opisano
+w podrozdziale~\ref{sec:ui}.
+
+\subsection{Proponowane rozwiązanie}
+\label{sec:proponowane}
+
+Na podstawie przeprowadzonego przeglądu sformułowano założenia rozwiązania opisanego
+szczegółowo w rozdziale~\ref{sec:architektura} niniejszej pracy. Zgodnie z celem pracy
+przedstawionym we wcześniejszej części dokumentu, proponowany system zbiera dane
+bezpośrednio z magistrali CAN pojazdu, klasyfikuje styl jazdy kierowcy metodą uczenia
+maszynowego oraz przekazuje wynik tej klasyfikacji w formie zgamifikowanej,
+motywującej informacji zwrotnej, wyświetlanej w czasie rzeczywistym na zintegrowanym
+z urządzeniem ekranie dotykowym. Całość przetwarzania --- od akwizycji danych, przez
+klasyfikację modelem uczenia maszynowego, po generowanie informacji zwrotnej ---
+odbywa się lokalnie, na pojedynczej platformie sprzętowej zamontowanej w pojeździe, bez
+udziału zewnętrznych serwerów, aplikacji mobilnej ani stałej łączności sieciowej.
+
+\subsubsection{Unikalne cechy proponowanego rozwiązania}
+
+Proponowane rozwiązanie wyróżnia na tle opisanych wcześniej systemów kilka cech.
+Po pierwsze, źródłem danych wejściowych jest bezpośrednio magistrala CAN pojazdu, a nie
+czujniki inercyjne smartfona ani ograniczony podzbiór parametrów odczytywanych ze
+złącza OBD. Pozwala to na wykorzystanie tych samych, precyzyjnych sygnałów, z których
+korzystają jednostki sterujące samego pojazdu (rzeczywista prędkość, obroty silnika,
+położenie pedału przyspieszenia, stan hamulca), bez niepewności pomiarowej wynikającej
+z pośredniego charakteru pomiaru czujnikami niezwiązanymi na stałe z pojazdem. Po
+drugie, klasyfikacja stylu jazdy wykonywana jest lokalnym modelem uczenia maszynowego,
+wytrenowanym w sposób opisany w rozdziale~\ref{sec:trening} i wyeksportowanym do postaci
+statycznego kodu uruchamianego bezpośrednio na mikrokontrolerze platformy docelowej ---
+w odróżnieniu od rozwiązań opartych na regułach progowych (Geotab, Automatic, eco:Drive)
+oraz od prac badawczych, w których klasyfikacja wykonywana jest w środowisku offline,
+poza samym pojazdem (Meiring i Myburgh, Bejani i Ghatee, Khan i in.).
+
+Po trzecie, informacja zwrotna przekazywana jest kierowcy w czasie rzeczywistym, w
+trakcie samej jazdy, a nie po jej zakończeniu (jak w przypadku eco:Drive) ani w formie
+zbiorczego podsumowania tygodniowego (jak w przypadku Automatic). W przeciwieństwie do
+rozwiązań korzystających z liczbowego wskaźnika (DriveWell, Geotab) proponowany system
+wykorzystuje przy tym metaforę wizualną --- rosnące, zdrowe drzewko przy jeździe
+ekonomicznej i więdnące przy jeździe agresywnej --- zgodną z zasadami nudgingu, które
+zakładają, że nagradzanie pożądanych zachowań jest skuteczniejszą formą wpływania na
+nawyki niż komunikaty o błędach~\cite{thaler2008}, oraz z zasadami gamifikacji, rozumianej
+jako wykorzystanie elementów typowych dla gier w kontekście niezwiązanym z rozrywką w
+celu zwiększenia zaangażowania użytkownika~\cite{deterding2011}. Po czwarte, cała
+funkcjonalność systemu jest dostępna niezależnie od łączności sieciowej ani istnienia
+zewnętrznej usługi w czasie --- w odróżnieniu od systemu Automatic, którego całkowite
+wyłączenie w 2020 roku pozbawiło funkcjonalności wszystkie sprzedane wcześniej
+urządzenia~\cite{automaticlabs}, sprawność proponowanego rozwiązania zależy wyłącznie od
+stanu technicznego samego urządzenia zamontowanego w pojeździe.
+
+\subsubsection{Przewagi względem opisanych rozwiązań}
+
+Wynikające z powyższych cech przewagi proponowanego rozwiązania względem opisanych
+wcześniej systemów zestawiono w tabeli~\ref{tab:przewagi}. Warto przy tym podkreślić, że
+żadna z wymienionych przewag nie jest odosobniona --- pojedyncze elementy proponowanego
+podejścia (dane z magistrali CAN, klasyfikacja metodą uczenia maszynowego, gamifikowana
+informacja zwrotna, praca bez łączności sieciowej) pojawiają się osobno w
+poszczególnych opisanych wcześniej rozwiązaniach lub pracach naukowych, jednak żadne
+z nich nie łączy wszystkich tych elementów jednocześnie w ramach jednego, gotowego do
+montażu w pojeździe urządzenia.
+
+\begin{table}[!h]
+    \centering
+    \caption{Przewagi proponowanego rozwiązania względem opisanych alternatyw.}
+    \label{tab:przewagi}
+    \begin{tabular}{| p{3.4cm} | p{5.8cm} | p{5.3cm} |} \hline
+        \textbf{Cecha} & \textbf{Rozwiązania i~badania opisane w~podrozdziałach~\ref{sec:przeglad} i~\ref{sec:uzasadnienie-metod}} & \textbf{Proponowane rozwiązanie} \\ \hline\hline
+        Źródło danych & czujniki smartfona (niepewność pomiarowa) lub ograniczony zestaw parametrów OBD & pełny dostęp do sygnałów magistrali CAN pojazdu \\ \hline
+        Metoda oceny stylu jazdy & reguły progowe (Geotab, Automatic, eco:Drive) lub model badawczy działający offline (prace naukowe) & model uczenia maszynowego uruchamiany na urządzeniu pokładowym \\ \hline
+        Moment przekazania informacji zwrotnej & po zakończeniu jazdy (eco:Drive) lub podsumowanie tygodniowe (Automatic) & w~czasie rzeczywistym, w~trakcie jazdy \\ \hline
+        Forma informacji zwrotnej & liczbowy wskaźnik (DriveWell, Geotab) lub aplikacja mobilna wymagająca uwagi kierowcy (EcoGO, Vitiello i~in.) & zgamifikowana wizualizacja na~zintegrowanym z~pojazdem ekranie \\ \hline
+        Zależność od łączności/chmury & wymagana stała łączność sieciowa (DriveWell, Geotab, Automatic) & brak zależności --- praca w~pełni lokalna \\ \hline
+        Trwałość działania urządzenia & zależna od~istnienia usługi dostawcy (przykład: wycofanie usługi Automatic w~2020~r.) & zależna wyłącznie od~sprawności technicznej urządzenia \\ \hline
+        Model kosztowy & jednorazowy koszt sprzętu i/lub cykliczna opłata abonamentowa za~usługę chmurową & jednorazowy koszt sprzętu, bez~opłat cyklicznych \\ \hline
+    \end{tabular}
+\end{table}
+
+\subsection{Podsumowanie}
+
+Przeprowadzony przegląd istniejących rozwiązań oraz analiza literatury naukowej
+pokazały, że rynek systemów analizy stylu jazdy oraz towarzysząca mu literatura
+naukowa rozwijają się intensywnie,
+jednak w kilku niezależnych kierunkach: rozwiązania komercyjne skupiają się na
+dostępności i niskim koszcie wdrożenia kosztem jakości danych i lokalności
+przetwarzania, rozwiązania flotowe i ubezpieczeniowe adresowane są do podmiotów
+zarządzających, nie do samego kierowcy, prace naukowe nad klasyfikacją metodami
+uczenia maszynowego pozostają w większości na etapie badawczym, a systemy stosujące
+gamifikację informacji zwrotnej opierają się na danych z czujników smartfona zamiast
+na danych pojazdowych. Żadne z omówionych rozwiązań nie łączy jednocześnie wysokiej
+jakości danych z magistrali CAN, klasyfikacji metodą uczenia maszynowego oraz
+zgamifikowanej informacji zwrotnej dostępnej w czasie rzeczywistym, w pełni lokalnie,
+bez zależności od zewnętrznej infrastruktury. Dotyczy to również wymiaru czasowego
+informacji zwrotnej --- większość opisanych systemów przekazuje ocenę stylu jazdy
+dopiero po zakończeniu przejazdu lub cyklicznie (np.\ raz w tygodniu), co ogranicza jej
+praktyczną użyteczność jako narzędzia bieżącej korekty zachowania za kierownicą.
+
+Warto przy tym zestawić rząd wielkości korzyści wynikających z samej poprawy stylu
+jazdy, niezależnie od zastosowanej technologii: redukcja zużycia paliwa wynikająca
+z ograniczenia agresywnej jazdy sięga, według przywołanych badań, 10--40\% w ruchu
+miejskim~\cite{thomas2017}, a rzeczywiste wdrożenia systemów informacji zwrotnej ---
+takie jak Fiat eco:Drive czy platforma DriveWell --- potwierdzają, że przekazanie
+kierowcy odpowiednio zaprojektowanej informacji zwrotnej pozwala uzyskać wymierną
+poprawę konkretnych wskaźników, odpowiednio: średnio 6-procentową redukcję zużycia
+paliwa~\cite{fiatecodrive} oraz 20--35-procentową redukcję częstości zdarzeń
+niebezpiecznych i rozproszenia uwagi kierowcy~\cite{cmtelematics}. Skala tych efektów
+potwierdza, że wybór metody klasyfikacji stylu jazdy oraz formy informacji zwrotnej nie
+jest kwestią czysto techniczną, lecz ma bezpośrednie przełożenie na mierzalne korzyści
+ekonomiczne i związane z bezpieczeństwem, co uzasadnia szczegółowe podejście do obu
+tych zagadnień przyjęte w niniejszej pracy.
+
+Zidentyfikowana w ten sposób luka stanowi uzasadnienie dla podjęcia tematu niniejszej
+pracy. W dalszych rozdziałach przedstawiono kolejno: szczegółowe wymagania projektowe
+stawiane opracowywanemu systemowi (rozdział~\ref{sec:wymagania}), wprowadzenie do
+zasad działania magistrali CAN niezbędne do zrozumienia dalszej części pracy
+(podrozdział~\ref{sec:can}), a następnie pełny opis koncepcji, architektury oraz
+implementacji proponowanego rozwiązania --- od akwizycji danych z pojazdu, przez
+przygotowanie zbioru danych i trening modelu klasyfikującego styl jazdy, po
+implementację systemu na docelowej platformie sprzętowej oraz projekt interfejsu
+użytkownika (rozdział~\ref{sec:architektura} i kolejne).

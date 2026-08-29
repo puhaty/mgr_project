@@ -1,0 +1,496 @@
+<title>Wklejka Analizy modeli</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  :root {
+    --bg:        #EFF2F2;
+    --surface:   #FFFFFF;
+    --surface-2: #E4EAEA;
+    --ink:       #151B1D;
+    --ink-2:     #3D4A4D;
+    --muted:     #66767A;
+    --line:      #D3DBDB;
+    --line-2:    #BAC5C5;
+    --accent:    #0B5D63;
+    --accent-ink:#FFFFFF;
+    --warm:      #A2600C;
+    --shadow:    0 1px 2px rgba(21,27,29,.06), 0 8px 24px -16px rgba(21,27,29,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:        #0F1416;
+      --surface:   #171F21;
+      --surface-2: #202A2D;
+      --ink:       #E7EDED;
+      --ink-2:     #C2CDCE;
+      --muted:     #8B9B9E;
+      --line:      #2A3639;
+      --line-2:    #3A4A4E;
+      --accent:    #4FB3B8;
+      --accent-ink:#08191A;
+      --warm:      #D9A050;
+      --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:        #0F1416;
+    --surface:   #171F21;
+    --surface-2: #202A2D;
+    --ink:       #E7EDED;
+    --ink-2:     #C2CDCE;
+    --muted:     #8B9B9E;
+    --line:      #2A3639;
+    --line-2:    #3A4A4E;
+    --accent:    #4FB3B8;
+    --accent-ink:#08191A;
+    --warm:      #D9A050;
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.85);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .masthead { display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(30px, 5vw, 42px);
+    line-height: 1.1;
+    letter-spacing: -.015em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lede { margin: 0; max-width: 64ch; color: var(--ink-2); font-size: 15.5px; }
+  .rule { height: 1px; background: var(--line); }
+
+  .block {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .block-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+  }
+  .step {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--surface);
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    padding: 2px 7px;
+    flex: none;
+  }
+  .block-title { font-size: 14px; font-weight: 600; flex: 1 1 auto; min-width: 0; }
+  .block-title small {
+    display: block;
+    font-weight: 400;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .copy {
+    flex: none;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: opacity .15s ease, background .15s ease;
+  }
+  .copy:hover { opacity: .88; }
+  .copy:focus-visible { outline: 2px solid var(--warm); outline-offset: 2px; }
+  .copy[data-state="done"] { background: var(--warm); }
+  .copy[data-state="fail"] { background: var(--surface); color: var(--ink); border-color: var(--line-2); }
+
+  .block-body { padding: 22px 24px 26px; }
+
+  .para {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 16.5px;
+    line-height: 1.65;
+    color: var(--ink);
+    margin: 0 0 1em;
+    max-width: 68ch;
+    text-align: justify;
+    hyphens: auto;
+  }
+  .para:last-child { margin-bottom: 0; }
+  .para-h {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .note {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 14px 0 0;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    max-width: 68ch;
+  }
+
+  .table-scroll { overflow-x: auto; }
+  table.dane {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 660px;
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+  table.dane th,
+  table.dane td {
+    border: 1px solid var(--line-2);
+    padding: 9px 11px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.dane thead th { background: var(--surface-2); font-weight: 600; font-size: 14px; }
+  .caption { font-family: "IBM Plex Sans", sans-serif; font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+  .caption strong { color: var(--ink-2); font-weight: 600; }
+
+  .finish {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 18px 22px;
+  }
+  .finish h2 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+  .finish p { margin: 0 0 8px; font-size: 14.5px; color: var(--ink-2); max-width: 66ch; }
+  .finish p:last-child { margin-bottom: 0; }
+  kbd {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--line-2);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 560px) {
+    .wrap { padding: 36px 16px 72px; }
+    .block-body { padding: 18px 16px 20px; }
+    .block-head { flex-wrap: wrap; }
+    .copy { width: 100%; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Praca magisterska · rozdział Projekt</div>
+    <h1>Analiza modeli uczenia maszynowego</h1>
+    <p class="lede">Nowy podrozdział wchodzi przed „Zbiór danych i jego przygotowanie” i staje się punktem 4.6. Bloki 1–4 są już wklejone. Bloki 5 i 6 to poprawki w istniejącym tekście, które usuwają powtórzenia — blok 6 wymaga edycji w miejscu, nie podmiany całego akapitu.</p>
+  </header>
+
+  <div class="rule"></div>
+
+  <!-- 1 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">1</span>
+      <span class="block-title">Nagłówek nowego podrozdziału
+        <small>Styl Nagłówek 2, bezpośrednio przed „Zbiór danych i jego przygotowanie”</small>
+      </span>
+      <button class="copy" data-target="b1" data-mode="text">Kopiuj</button>
+    </div>
+    <div class="block-body" id="b1">
+      <p class="para-h">Analiza modeli uczenia maszynowego</p>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">2</span>
+      <span class="block-title">Treść — akapity przed tabelą
+        <small>Trzy akapity: po co ta analiza, kryteria doboru, zakres przeglądu</small>
+      </span>
+      <button class="copy" data-target="b2" data-mode="text">Kopiuj</button>
+    </div>
+    <div class="block-body" id="b2">
+      <p class="para">Wybór klasy algorytmu poprzedza przygotowanie zbioru uczącego, ponieważ to on rozstrzyga, w jakiej postaci dane mają zostać przygotowane. Modele operujące na sekwencjach wymagają surowego przebiegu kolejnych próbek, podczas gdy klasyfikatory ogólnego przeznaczenia oczekują wektora cech opisujących ustalony fragment przejazdu. Decyzja podjęta na tym etapie przesądza więc o kształcie kolejnego kroku prac.</p>
+      <p class="para">Przy doborze algorytmu decydujące były ograniczenia platformy docelowej, opisanej w podrozdziale 4.4. Przyjęto cztery kryteria. Pierwszym jest rozmiar wytrenowanego modelu, który musi zmieścić się w pamięci programu mikrokontrolera obok warstwy graficznej, sterowników wyświetlacza i pozostałych modułów oprogramowania. Drugim — czas pojedynczej predykcji, wyznaczanej na urządzeniu co 100 ms, równolegle z odświeżaniem interfejsu i obsługą magistrali. Trzecim jest brak zależności od zewnętrznego środowiska uruchomieniowego oraz od intensywnych obliczeń zmiennoprzecinkowych, których mikrokontroler nie wykonuje wydajnie. Czwartym — możliwość automatycznego przeniesienia wytrenowanego modelu do kodu w języku C, kompilowanego razem z resztą oprogramowania.</p>
+      <p class="para">Pod kątem tych kryteriów rozważono klasy algorytmów wskazywane w literaturze jako stosowane do oceny stylu jazdy — logikę rozmytą, ukryte modele Markowa oraz maszyny wektorów nośnych, wymieniane w przeglądzie Meiringa i Myburgha [3] — a także sieci neuronowe oraz zespoły drzew decyzyjnych. Zestawienie rozważanych klas wraz z oceną ich przydatności do implementacji na mikrokontrolerze przedstawiono w Tabeli 10.</p>
+      <p class="note">Nowa tabela wypada na pozycji 10 — ostatnia przed nią to Tabela 9 z fragmentem pliku CSV. Dotychczasowe tabele 10–21 przesuną się o jeden. Numer „4.4” oraz odwołanie „Tabeli 10” wstaw jako odsyłacze (Odwołania → Odsyłacz), inaczej nie przenumerują się razem z resztą pracy.</p>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">3</span>
+      <span class="block-title">Tabela
+        <small>Kopiuje się jako tabela, nie jako tekst</small>
+      </span>
+      <button class="copy" data-target="tab-modele" data-mode="table">Kopiuj tabelę</button>
+    </div>
+    <div class="block-body">
+      <p class="caption"><strong>Podpis:</strong> Klasy algorytmów rozważane do klasyfikacji stylu jazdy na urządzeniu wbudowanym.</p>
+      <div class="table-scroll">
+        <table class="dane" id="tab-modele">
+          <thead>
+            <tr>
+              <th>Klasa algorytmów</th>
+              <th>Zasada działania</th>
+              <th>Ocena pod kątem implementacji na mikrokontrolerze</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Logika rozmyta</td>
+              <td>Przypisanie stylu jazdy na podstawie ręcznie zaprojektowanych reguł i funkcji przynależności [3] [11]</td>
+              <td>Sama predykcja jest tania obliczeniowo, jednak jakość klasyfikacji zależy od ręcznie zdefiniowanych reguł, co przenosi ciężar z danych na projektanta</td>
+            </tr>
+            <tr>
+              <td>Ukryte modele Markowa</td>
+              <td>Modelowanie przejazdu jako sekwencji nieobserwowalnych stanów [3]</td>
+              <td>Operują na surowej sekwencji próbek, a nie na cechach okna; koszt estymacji stanu rośnie wraz z długością analizowanej sekwencji</td>
+            </tr>
+            <tr>
+              <td>Maszyny wektorów nośnych</td>
+              <td>Wyznaczenie granicy decyzyjnej opartej na wybranych próbkach zbioru uczącego [3]</td>
+              <td>Rozmiar modelu i czas predykcji rosną z liczbą wektorów nośnych, a więc pośrednio z rozmiarem zbioru uczącego; jądra nieliniowe wymagają obliczeń zmiennoprzecinkowych</td>
+            </tr>
+            <tr>
+              <td>Sieci neuronowe</td>
+              <td>Warstwy przekształceń macierzowych z nieliniowymi funkcjami aktywacji</td>
+              <td>Wymagają arytmetyki zmiennoprzecinkowej oraz osobnego środowiska uruchomieniowego na urządzeniu, np. TensorFlow Lite lub ONNX</td>
+            </tr>
+            <tr>
+              <td>Zespoły drzew decyzyjnych</td>
+              <td>Głosowanie wielu drzew decyzyjnych zbudowanych na losowych podzbiorach danych i cech [33] [34]</td>
+              <td>Predykcja sprowadza się do porównań wartości cech z progami; rozmiar modelu sterowany liczbą i głębokością drzew; możliwy eksport do statycznych tablic w języku C</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Po wklejeniu: Układ → Powtórz wiersze nagłówka. Podpis wstaw przez Odwołania → Wstaw podpis.</p>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">4</span>
+      <span class="block-title">Treść — akapity po tabeli
+        <small>Uzasadnienie wyboru i przejście do kolejnego podrozdziału</small>
+      </span>
+      <button class="copy" data-target="b4" data-mode="text">Kopiuj</button>
+    </div>
+    <div class="block-body" id="b4">
+      <p class="para">Analiza wskazała zespoły drzew decyzyjnych jako rozwiązanie najlżejsze w implementacji na urządzeniu wbudowanym. Predykcja sprowadza się w nich do przejścia od korzenia do liścia w każdym z drzew, a więc do ciągu porównań wartości cechy z progiem — bez mnożenia macierzy, funkcji wykładniczych i innych operacji, które w pozostałych klasach wymuszają arytmetykę zmiennoprzecinkową lub osobne środowisko uruchomieniowe. Rozmiar modelu jest przy tym sterowany bezpośrednio dwoma parametrami, liczbą drzew i ich maksymalną głębokością, co pozwala świadomie wymieniać dokładność klasyfikacji na zajętość pamięci. Pozostałe klasy odrzucono na etapie analizy, bez trenowania.</p>
+      <p class="para">Do dalszych prac wytypowano dwa warianty z tej rodziny: drzewa skrajnie losowe [33] oraz las losowy [34], różniące się sposobem wyznaczania progów podziału w węzłach drzewa. Oba zostały wytrenowane i porównane na tym samym zbiorze, co opisano w podrozdziale 4.8. Przyjęcie klasyfikatora operującego na wektorze cech, a nie na surowej sekwencji próbek, przesądziło jednocześnie o kształcie zbioru uczącego: dane należało podzielić na okna czasowe i opisać każde z nich zestawem cech statystycznych, co jest przedmiotem kolejnego podrozdziału.</p>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">5</span>
+      <span class="block-title">Poprawka — podrozdział „Wybór klasy algorytmów”
+        <small>Zastępuje całą jego dotychczasową treść</small>
+      </span>
+      <button class="copy" data-target="b5" data-mode="text">Kopiuj</button>
+    </div>
+    <div class="block-body" id="b5">
+      <p class="para">Oba warianty wytypowane w podrozdziale 4.6 trenowano z tymi samymi hiperparametrami, zestawionymi w Tabeli 14. Liczbę drzew i maksymalną głębokość ograniczono z wyjściowych wartości 80 i 8 do 60 i 7, co zmniejszyło rozmiar generowanego pliku nagłówkowego w języku C o około 25% przy minimalnej stracie dokładności klasyfikacji.</p>
+      <p class="note">Tabela hiperparametrów ma dziś numer 13, a po wstawieniu nowej tabeli będzie miała 14 — dlatego w tekście jest „Tabeli 14”. Zmień też tytuł tego podrozdziału z „Wybór klasy algorytmów” na <strong>„Hiperparametry porównywanych modeli”</strong> — po przeniesieniu przeglądu do 4.6 stary tytuł już nie opisuje zawartości. Zdanie o narzędziu emlearn zostało tu usunięte, bo powtarzało treść podrozdziału „Eksport modelu do kodu C”.</p>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="block">
+    <div class="block-head">
+      <span class="step">6</span>
+      <span class="block-title">Poprawka — wstęp do „Trening i wybór modelu uczenia maszynowego”
+                <small>Popraw pierwsze zdanie w miejscu, nie wklejaj całego akapitu</small>
+                      </span>
+                            <button class="copy" data-target="b6" data-mode="text">Kopiuj zdanie</button>
+                                </div>
+                                    <div class="block-body" id="b6">
+                                          <p class="para">Na podstawie przygotowanego zbioru okien czasowych (podrozdział 4.7) wytrenowano i porównano dwa warianty modelu wytypowane w analizie przedstawionej w podrozdziale 4.6.</p>
+                                                <p class="note"><strong>Nie zastępuj całego akapitu.</strong> Podmień tylko jego pierwsze zdanie — drugie zdanie, o zespołach drzew z pakietu scikit-learn, zostaw nietknięte. Zawiera ono pole cytowania, którego numer Word zmienił po wstawieniu nowego podrozdziału z 32 na 34; wklejenie akapitu jako zwykłego tekstu zamieniłoby to pole na sztywny, błędny numer.</p>
+                                                    </div>
+  </section>
+
+  <div class="finish">
+    <h2>Na koniec</h2>
+    <p>Po wklejeniu: <kbd>Ctrl</kbd> + <kbd>A</kbd>, potem <kbd>F9</kbd> (na laptopie <kbd>Fn</kbd> + <kbd>F9</kbd>), a następnie prawym przyciskiem w spis treści → Aktualizuj pole → Aktualizuj cały spis. Numeracja podrozdziałów przesunie się: Zbiór danych na 4.7, Trening na 4.8, Implementacja na 4.9, Interfejs na 4.10.</p>
+    <p>Bilans objętości: nowy podrozdział to około półtorej strony, a usunięte powtórzenia w blokach 5 i 6 oddają jakieś pół strony. Netto około jednej strony przy limicie 70 brutto.</p>
+  </div>
+
+</div>
+
+<script>
+  function proseText(el) {
+    var nodes = el.querySelectorAll(".para, .para-h");
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      out.push(nodes[i].textContent.replace(/\s+/g, " ").trim());
+    }
+    return out.join("\n\n");
+  }
+
+  function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function tableHtml(tbl) {
+    var cell = "border:1px solid #000000;padding:4pt 6pt;vertical-align:top;";
+    var html = '<table style="border-collapse:collapse;">';
+    var heads = tbl.querySelectorAll("thead th");
+    if (heads.length) {
+      html += "<thead><tr>";
+      for (var i = 0; i < heads.length; i++) {
+        html += '<th style="' + cell + 'font-weight:bold;text-align:left;">' + esc(heads[i].textContent.trim()) + "</th>";
+      }
+      html += "</tr></thead>";
+    }
+    html += "<tbody>";
+    var rows = tbl.querySelectorAll("tbody tr");
+    for (var r = 0; r < rows.length; r++) {
+      html += "<tr>";
+      var cells = rows[r].querySelectorAll("td");
+      for (var c = 0; c < cells.length; c++) {
+        html += '<td style="' + cell + '">' + esc(cells[c].textContent.trim()) + "</td>";
+      }
+      html += "</tr>";
+    }
+    return html + "</tbody></table>";
+  }
+
+  function tableText(tbl) {
+    var lines = [];
+    var rows = tbl.querySelectorAll("tr");
+    for (var r = 0; r < rows.length; r++) {
+      var cells = rows[r].querySelectorAll("th, td");
+      var parts = [];
+      for (var c = 0; c < cells.length; c++) {
+        parts.push(cells[c].textContent.replace(/\s+/g, " ").trim());
+      }
+      lines.push(parts.join("\t"));
+    }
+    return lines.join("\n");
+  }
+
+  function flash(btn, label, state) {
+    var original = btn.dataset.label || btn.textContent;
+    btn.dataset.label = original;
+    btn.textContent = label;
+    btn.setAttribute("data-state", state);
+    window.setTimeout(function () {
+      btn.textContent = original;
+      btn.removeAttribute("data-state");
+    }, 1800);
+  }
+
+  function legacyCopy(html, text) {
+    var holder = document.createElement("div");
+    holder.setAttribute("contenteditable", "true");
+    holder.style.position = "fixed";
+    holder.style.left = "-9999px";
+    holder.style.top = "0";
+    holder.innerHTML = html || esc(text).replace(/\n/g, "<br>");
+    document.body.appendChild(holder);
+    var range = document.createRange();
+    range.selectNodeContents(holder);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    sel.removeAllRanges();
+    document.body.removeChild(holder);
+    return ok;
+  }
+
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest(".copy");
+    if (!btn) return;
+
+    var el = document.getElementById(btn.dataset.target);
+    if (!el) return;
+
+    var mode = btn.dataset.mode;
+    var html = null;
+    var text;
+
+    if (mode === "table") {
+      html = tableHtml(el);
+      text = tableText(el);
+    } else {
+      text = proseText(el);
+    }
+
+    var done = function () { flash(btn, "Skopiowano", "done"); };
+    var failed = function () {
+      if (legacyCopy(html, text)) { done(); }
+      else { flash(btn, "Zaznacz i skopiuj ręcznie", "fail"); }
+    };
+
+    if (navigator.clipboard && window.ClipboardItem && html) {
+      var payload = {
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" })
+      };
+      navigator.clipboard.write([new ClipboardItem(payload)]).then(done).catch(failed);
+    } else if (navigator.clipboard && navigator.clipboard.writeText && !html) {
+      navigator.clipboard.writeText(text).then(done).catch(failed);
+    } else {
+      failed();
+    }
+  });
+</script>

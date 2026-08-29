@@ -1,0 +1,506 @@
+<ide_diagnostics>[
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 12,
+    "column": 1,
+    "message": "LaTeX: Citation 'thaler2008' on page 12 undefined.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 12,
+    "column": 1,
+    "message": "LaTeX: Citation 'deterding2011' on page 12 undefined.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 27,
+    "column": 1,
+    "message": "LaTeX: Citation 'lawrenz2013' on page 12 undefined.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 180,
+    "column": 1,
+    "message": "LaTeX: Citation 'barkenbus2010' on page 14 undefined.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "Underfull \\vbox (badness 10000) in page 14",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 214,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 10000)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 216,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 10000)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 217,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 10000)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "Underfull \\vbox (badness 6542) in page 16",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 302,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 3049)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 303,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 7433)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 303,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 2762)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 303,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 10000)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 303,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 2903)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 304,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 3039)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 304,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 1102)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 307,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 10000)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 307,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 4366)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 308,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 6141)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 308,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 10000)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 314,
+    "column": 1,
+    "message": "Overfull \\hbox (3.20384pt too wide)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 432,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 10000)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 439,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 3118)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 440,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 10000)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 443,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 1331)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 546,
+    "column": 1,
+    "message": "LaTeX: Citation 'pandas' on page 23 undefined.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 547,
+    "column": 1,
+    "message": "LaTeX: Citation 'numpy' on page 23 undefined.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 574,
+    "column": 1,
+    "message": "Overfull \\hbox (1.6589pt too wide)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 607,
+    "column": 1,
+    "message": "Overfull \\hbox (1.8026pt too wide)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "Underfull \\vbox (badness 2443) in page 24",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "Underfull \\vbox (badness 10000) in page 25",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 742,
+    "column": 1,
+    "message": "Overfull \\hbox (17.29555pt too wide)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 755,
+    "column": 1,
+    "message": "Overfull \\hbox (37.81773pt too wide)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 767,
+    "column": 1,
+    "message": "Overfull \\hbox (7.7916pt too wide)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "Underfull \\vbox (badness 2426)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1011,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 10000)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1011,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 4416)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1012,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 10000)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1018,
+    "column": 1,
+    "message": "Overfull \\hbox (0.87929pt too wide)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "Underfull \\vbox (badness 10000) in page 32",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "Underfull \\vbox (badness 1496) in page 33",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1088,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 10000)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "Underfull \\vbox (badness 10000) in page 34",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1276,
+    "column": 1,
+    "message": "Underfull \\hbox (badness 1824)",
+    "code": "",
+    "severity": "Information"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  },
+  {
+    "filePath": "/d:/Studia/mgr/praca magisterska/PM_latex/tex/3-projekt.tex",
+    "line": 1,
+    "column": 1,
+    "message": "LaTeX: `!h' float specifier changed to `!ht'.",
+    "code": "",
+    "severity": "Warning"
+  }
+]</ide_diagnostics>

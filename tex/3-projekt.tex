@@ -2,20 +2,165 @@
 \section{Projekt}
 
 Niniejszy rozdział przedstawia proces projektowania oraz implementacji systemu
-analizy stylu jazdy kierowcy. Opis prowadzony jest zgodnie z kolejnością
-realizacji prac: od koncepcji i architektury rozwiązania, poprzez dobór
-platformy sprzętowej, budowę podsystemu akwizycji danych z magistrali CAN oraz
-przygotowanie zbioru danych uczących, aż po trening i wybór modelu uczenia
-maszynowego, jego osadzenie na platformie docelowej oraz projekt interfejsu
-użytkownika wykorzystującego mechanizmy nudgingu i gamifikacji.
+analizy stylu jazdy kierowcy. Opis otwiera krótkie wprowadzenie do magistrali
+CAN --- źródła wszystkich danych wykorzystywanych przez system --- po którym
+kolejne podrozdziały odpowiadają kolejności realizacji prac: od koncepcji
+i architektury rozwiązania, poprzez dobór platformy sprzętowej, budowę
+podsystemu akwizycji danych oraz przygotowanie zbioru danych uczących, aż po
+trening i wybór modelu uczenia maszynowego, jego osadzenie na platformie
+docelowej oraz projekt interfejsu użytkownika wykorzystującego mechanizmy
+nudgingu~\cite{thaler2008} i gamifikacji~\cite{deterding2011}.
+
+%---------------------------------------------------------------
+\subsection{Magistrala CAN}
+\label{sec:can}
+
+Magistrala CAN (ang. \emph{Controller Area Network}) jest szeregową magistralą
+komunikacyjną opracowaną z myślą o wymianie danych pomiędzy elektronicznymi
+jednostkami sterującymi pojazdu (ang. \emph{Electronic Control Unit}, ECU),
+znormalizowaną w rodzinie norm ISO~11898~\cite{iso11898}. Stanowi ona dziś
+podstawowy standard komunikacji wewnątrzpojazdowej i to właśnie z niej
+pochodzą wszystkie dane telemetryczne wykorzystywane w niniejszej pracy.
+Poniższy podrozdział przedstawia zwięźle genezę, budowę oraz zasadę działania
+magistrali w zakresie potrzebnym do zrozumienia dalszej części rozdziału;
+wyczerpujące omówienie standardu można znaleźć
+w~literaturze~\cite{lawrenz2013}.
+
+\subsubsection{Geneza i budowa magistrali}
+
+Magistrala CAN została opracowana w latach osiemdziesiątych XX wieku przez
+firmę Robert Bosch GmbH w odpowiedzi na szybko rosnącą liczbę urządzeń
+elektronicznych w samochodach. Łączenie każdego czujnika i każdego elementu
+wykonawczego osobnymi przewodami punkt-punkt prowadziło do rozrostu wiązek
+elektrycznych --- a wraz z nimi masy, kosztów i podatności na awarie ---
+dlatego zaproponowano wspólne medium transmisyjne, współdzielone przez
+wszystkie jednostki sterujące. Specyfikację CAN~2.0 opublikowano w roku
+1991~\cite{bosch1991}, a następnie znormalizowano ją jako ISO~11898.
+
+Fizycznie magistrala jest dwuprzewodową skrętką o liniach oznaczanych
+CAN\_H i CAN\_L, zakończoną na obu końcach rezystorami terminującymi
+o rezystancji 120~$\Omega$, do której poszczególne węzły dołączone są
+równolegle (rysunek~\ref{fig:topologia-can}). Transmisja ma charakter
+różnicowy --- odbiornik interpretuje różnicę napięć między oboma
+przewodami, a nie ich poziomy względem masy --- dzięki czemu zakłócenia
+elektromagnetyczne, indukujące się w obu przewodach skrętki jednakowo,
+w dużym stopniu się znoszą. Jest to własność szczególnie istotna
+w środowisku pojazdu, obfitującym w źródła zakłóceń takie jak układ
+zapłonowy czy alternator. Prędkość transmisji sięga 1~Mbit/s przy krótkiej
+magistrali; wraz ze wzrostem długości przewodów maksymalna prędkość maleje,
+dlatego w praktyce spotyka się również magistrale pracujące ze znacznie
+niższymi prędkościami, rzędu dziesiątek lub setek kbit/s.
+
+\begin{figure}[!h]
+    \centering
+    \resizebox{0.95\linewidth}{!}{\input{tex/fig/topologia-can.tikz}}
+    \caption{Topologia magistrali CAN: węzły dołączone równolegle do wspólnej, dwuprzewodowej magistrali z~terminacją 120~$\Omega$ na obu końcach.}
+    \label{fig:topologia-can}
+\end{figure}
+
+Magistrala CAN jest siecią typu multi-master: każdy węzeł może samodzielnie
+inicjować transmisję, a nadany komunikat odbierany jest przez wszystkie
+pozostałe węzły (transmisja rozgłoszeniowa). Charakterystyczną cechą
+standardu jest przy tym brak adresów urządzeń --- komunikaty identyfikowane
+są przez treść, za pomocą identyfikatora opisującego znaczenie przenoszonych
+danych, a każdy odbiorca sam decyduje, które identyfikatory są dla niego
+istotne. To właśnie ta własność umożliwia podłączenie do magistrali
+dodatkowego, wyłącznie nasłuchującego urządzenia --- takiego jak opracowany
+w tej pracy rejestrator --- bez jakiejkolwiek rekonfiguracji istniejących
+węzłów.
+
+\subsubsection{Bity dominujące i arbitraż}
+
+Na poziomie fizycznym magistrala rozróżnia dwa stany: \emph{dominujący},
+odpowiadający logicznemu zeru, oraz \emph{recesywny}, odpowiadający logicznej
+jedynce. Jeżeli w tym samym momencie jeden węzeł nadaje bit dominujący,
+a inny recesywny, na magistrali ustala się stan dominujący --- magistrala
+realizuje więc iloczyn logiczny nadawanych bitów.
+
+Własność ta jest podstawą bezkolizyjnego arbitrażu dostępu do medium. Węzeł
+rozpoczynający transmisję nadaje kolejne bity identyfikatora komunikatu,
+jednocześnie odczytując stan magistrali. Jeśli nadał bit recesywny,
+a odczytał dominujący, oznacza to, że równolegle nadaje inny węzeł
+z komunikatem o niższym identyfikatorze --- przegrywający arbitraż węzeł
+natychmiast przerywa transmisję i ponawia ją po zakończeniu bieżącej ramki.
+W efekcie kolizje nie niszczą żadnej transmisji ani nie marnują pasma,
+a komunikat o najniższym identyfikatorze (najwyższym priorytecie) zawsze
+zostaje nadany bez opóźnienia. Przypisanie identyfikatorów komunikatom
+wyznacza więc jednocześnie ich stałe, deterministyczne priorytety --- co ma
+kluczowe znaczenie dla sygnałów krytycznych dla bezpieczeństwa.
+
+\subsubsection{Format ramki danych}
+
+Podstawową jednostką transmisji jest ramka danych, której pola
+zestawiono~\cite{bosch1991} w tabeli~\ref{tab:ramka-can}. Standard definiuje dwa formaty ramki: podstawowy,
+z identyfikatorem 11-bitowym, oraz rozszerzony, z identyfikatorem 29-bitowym
+--- z tego drugiego korzysta pojazd wykorzystany w niniejszej pracy.
+Pojedyncza ramka przenosi od 0 do 8 bajtów danych, w których producent
+pojazdu umieszcza jeden lub kilka sygnałów (np. prędkość i poziom paliwa
+we wspólnej ramce).
+
+\begin{table}[!h]
+    \centering
+    \caption{Pola ramki danych magistrali CAN.}
+    \label{tab:ramka-can}
+    \begin{tabular}{| p{4.2cm} | p{3.1cm} | p{5.6cm} |} \hline
+        \textbf{Pole} & \textbf{Długość [bity]} & \textbf{Rola} \\ \hline\hline
+        Początek ramki (SOF) & 1 & bit dominujący, synchronizacja odbiorników \\ \hline
+        Identyfikator & 11 lub 29 & priorytet oraz identyfikacja treści komunikatu \\ \hline
+        Bit RTR & 1 & rozróżnienie ramki danych od ramki zdalnej \\ \hline
+        Pole sterujące & 6 & m.in. długość pola danych (DLC) \\ \hline
+        Pole danych & 0--64 (0--8 bajtów) & przenoszone sygnały \\ \hline
+        Pole CRC & 16 & suma kontrolna wraz z~ogranicznikiem \\ \hline
+        Pole ACK & 2 & potwierdzenie odbioru przez pozostałe węzły \\ \hline
+        Koniec ramki (EOF) & 7 & sekwencja bitów recesywnych \\ \hline
+    \end{tabular}
+\end{table}
+
+Warto wspomnieć, że standard doczekał się rozwinięcia w postaci CAN~FD
+(ang. \emph{CAN with Flexible Data-Rate})~\cite{boschfd2012}, opracowanego
+również przez firmę Bosch i włączonego do normy ISO~11898-1
+w~rewizji z~2015~roku~\cite{iso11898}. CAN~FD zwiększa maksymalną długość
+pola danych z~8 do 64~bajtów oraz pozwala przyspieszyć transmisję w~fazie
+danych ramki, zachowując zasadę arbitrażu klasycznej magistrali. W~niniejszej
+pracy wykorzystywana jest klasyczna odmiana magistrali CAN.
+
+W praktyce jednostki sterujące nadają swoje ramki cyklicznie, z okresami
+właściwymi dla danego sygnału --- od pojedynczych milisekund dla wielkości
+szybkozmiennych po setki milisekund dla wielkości wolnozmiennych. Komunikacja
+ma więc charakter zdarzeniowy: wartość sygnału pozostaje aktualna do
+nadejścia kolejnej ramki z tym samym identyfikatorem. Własność ta ma
+bezpośrednie konsekwencje dla przetwarzania danych w niniejszej pracy ---
+wymusza sprowadzenie odebranych sygnałów do wspólnej siatki czasowej,
+opisane w podrozdziale~\ref{sec:dane}.
+
+\subsubsection{Mechanizmy niezawodności}
+
+Standard CAN przewiduje kilka współdziałających mechanizmów wykrywania
+i obsługi błędów transmisji. Każda ramka chroniona jest sumą kontrolną CRC,
+a jej poprawny odbiór potwierdzany jest przez pozostałe węzły w polu ACK.
+Węzeł, który wykryje błąd, natychmiast sygnalizuje go wszystkim pozostałym
+specjalną ramką błędu, unieważniając w ten sposób zakłóconą transmisję ---
+nadawca automatycznie ją wówczas ponawia.
+
+Każdy węzeł prowadzi przy tym liczniki błędów nadawania i odbioru,
+na podstawie których przechodzi między trzema stanami: aktywnym (pełne
+uprawnienia), \emph{błędu pasywnego} (węzeł nie może już unieważniać cudzych
+transmisji) oraz odłączenia od magistrali (węzeł zawieszający nadawanie).
+Mechanizm ten samoczynnie izoluje uszkodzone węzły, chroniąc magistralę
+przed zablokowaniem przez pojedynczą, wadliwą jednostkę. Kontrolery CAN
+oferują ponadto tryb wyłącznie nasłuchujący, w którym węzeł nie nadaje
+żadnych bitów --- ani potwierdzeń, ani ramek błędu --- pozostając całkowicie
+niewidocznym dla pozostałych uczestników komunikacji; tryb ten wykorzystano
+w podsystemie akwizycji danych (podrozdział~\ref{sec:akwizycja}) do
+bezpiecznej integracji urządzenia z magistralą pojazdu.
 
 %---------------------------------------------------------------
 \subsection{Koncepcja i architektura systemu}
 \label{sec:architektura}
 
 System analizy stylu jazdy zrealizowano jako samodzielne urządzenie pokładowe,
-instalowane w kabinie pojazdu i podłączone do jego magistrali CAN (ang.
-\emph{Controller Area Network})~\cite{iso11898}. Całość funkcjonalności ---
+instalowane w kabinie pojazdu i podłączone do jego magistrali CAN, opisanej
+w podrozdziale~\ref{sec:can}. Całość funkcjonalności ---
 akwizycja danych telemetrycznych, ich przetwarzanie, klasyfikacja stylu jazdy
 z użyciem modelu uczenia maszynowego oraz prezentacja wyników kierowcy ---
 realizowana jest lokalnie, na pojedynczym module z mikrokontrolerem ESP32-S3
@@ -30,11 +175,13 @@ niezależnie od dostępności łączności bezprzewodowej, co w warunkach jazdy
 dane opisujące sposób prowadzenia pojazdu nie opuszczają urządzenia, co
 eliminuje zastrzeżenia dotyczące prywatności ich przetwarzania. Samo połączenie
 telemetrii pokładowej z metodami uczenia maszynowego wpisuje się przy tym
-w aktualny nurt badań nad systemami analizy stylu jazdy~\cite{meiring2015}.
+w aktualny nurt badań nad systemami analizy stylu jazdy~\cite{meiring2015},
+a kształtowanie ekonomicznego stylu jazdy jest uznawaną w literaturze metodą
+ograniczania zużycia paliwa oraz emisji~\cite{barkenbus2010}.
 
 W architekturze rozwiązania wyróżnić można trzy współpracujące ze sobą
 środowiska. Pierwszym jest pojazd, którego elektroniczne jednostki sterujące
-(ang. \emph{Electronic Control Unit}, ECU) nadają na magistralę CAN ramki
+(ECU) nadają na magistralę CAN ramki
 zawierające sygnały wykorzystywane przez system, m.in. prędkość pojazdu,
 prędkość obrotową silnika, położenia pedałów oraz zużycie paliwa. Drugim jest
 opracowane urządzenie pokładowe, pełniące jednocześnie rolę jednostki
@@ -166,7 +313,7 @@ realizacji w wybranej platformie przedstawia tabela~\ref{tab:wymagania-platforma
 
 Wymienione wymagania spełnia w całości pojedynczy moduł
 ESP32-S3-Touch-LCD-4.3B firmy Waveshare~\cite{waveshare2024}, integrujący na
-jednej płytce układ SoC, wyświetlacz z panelem dotykowym, transceiver CAN,
+jednej płytce układ SoC~\cite{wikisoc}, wyświetlacz z panelem dotykowym, transceiver CAN,
 slot karty pamięci, układ RTC oraz moduł łączności bezprzewodowej.
 Rdzeniem modułu jest układ ESP32-S3~\cite{espressif_s3_ds} ---
 dwurdzeniowy mikrokontroler z rdzeniami Xtensa~LX7 taktowanymi do 240~MHz,
@@ -183,10 +330,10 @@ techniczną modułu zestawiono w tabeli~\ref{tab:specyfikacja-platforma}.
     \begin{tabular}{| p{5.3cm} | p{8.4cm} |} \hline
         \textbf{Parametr} & \textbf{Wartość} \\ \hline\hline
         Układ SoC & ESP32-S3, rdzenie Xtensa~LX7 (2$\times$), do~240~MHz \\ \hline
-        Pamięć RAM & 512~kB SRAM + 8~MB PSRAM (Octal) \\ \hline
+        Pamięć RAM~\cite{wikiram} & 512~kB SRAM + 8~MB PSRAM (Octal) \\ \hline
         Pamięć nieulotna (Flash) & 16~MB \\ \hline
         Łączność bezprzewodowa & Wi-Fi 2,4~GHz (802.11~b/g/n), Bluetooth~5.0~LE (niewykorzystywane w~projekcie) \\ \hline
-        Wyświetlacz & IPS 4,3\textquotedbl{}, 800$\times$480~px, 65~tys. kolorów (RGB565), interfejs równoległy RGB \\ \hline
+        Wyświetlacz & IPS~\cite{wikilcd} 4,3\textquotedbl{}, 800$\times$480~px, 65~tys. kolorów (RGB565), interfejs równoległy RGB \\ \hline
         Panel dotykowy & pojemnościowy, kontroler GT911 (I2C), do~5 punktów dotyku \\ \hline
         Interfejs CAN & sprzętowy transceiver + kontroler TWAI (zintegrowany w~SoC) \\ \hline
         Karta pamięci & microSD, interfejs SPI \\ \hline
@@ -201,7 +348,7 @@ napięcia zasilania (7--36~V DC), obejmujący zarówno instalację 12~V
 w samochodach osobowych, jak i wahania napięcia towarzyszące rozruchowi
 silnika oraz pracy alternatora, bez konieczności stosowania dodatkowego
 zewnętrznego stabilizatora. Pojemnościowy panel dotykowy obsługiwany przez kontroler GT911 oraz układ RTC
-PCF85063A współdzielą przy tym tę samą magistralę I2C, co upraszcza
+PCF85063A współdzielą przy tym tę samą magistralę I2C~\cite{i2cspec}, co upraszcza
 okablowanie modułu. Dobór tego konkretnego modułu potwierdza
 wniosek z podrozdziału~\ref{sec:architektura}: wszystkie wymagania funkcjonalne
 udało się zrealizować w ramach jednej, zwartej platformy sprzętowej, bez
@@ -217,7 +364,7 @@ eko-drzewka i sadu (podrozdział~\ref{sec:ui}), zajmujące znaczną część tej
 przestrzeni. Pamięć PSRAM wykorzystywana jest przede wszystkim przez
 bufory ramki obrazu biblioteki LVGL, których rozmiar --- przy rozdzielczości
 wyświetlacza 800$\times$480~px i~16-bitowej głębi koloru --- przekracza
-pojemność wewnętrznej pamięci SRAM układu SoC. Dwurdzeniowa architektura
+pojemność wewnętrznej pamięci SRAM~\cite{wikisram} układu SoC. Dwurdzeniowa architektura
 procesora pozwala natomiast na jednoczesną pracę zadania odświeżającego
 interfejs graficzny oraz zadań obsługujących magistralę CAN i predykcję
 modelu (podrozdział~\ref{sec:implementacja}), bez wzajemnego blokowania się
@@ -246,7 +393,7 @@ bezpieczeństwo odbioru danych oraz odporność na wartości nieprawidłowe.
 \subsubsection{Odbiór ramek z magistrali CAN}
 
 Odbiór ramek realizowany jest z użyciem kontrolera TWAI (ang. \emph{Two-Wire
-Automotive Interface}), wbudowanego w układ ESP32-S3 i połączonego ze
+Automotive Interface})~\cite{espidf}, wbudowanego w układ ESP32-S3 i połączonego ze
 sprzętowym transceiverem CAN modułu (p.~\ref{sec:platforma}). Kontroler
 skonfigurowano w trybie wyłącznie nasłuchującym,
 w którym urządzenie odbiera ramki, lecz nie generuje na magistrali potwierdzeń
@@ -306,8 +453,8 @@ pochodzącym z układu RTC PCF85063A, odczytywanego po magistrali I2C. Po
 uruchomieniu urządzenia zegar systemowy synchronizowany jest ze wskazaniem
 układu RTC; jeśli odczyt jest nieprawidłowy (np. przy pierwszym uruchomieniu,
 przed ustawieniem zegara), system sięga po ostatni znany znacznik czasu
-zapisany w pamięci NVS. Wskazania RTC mogą być dodatkowo aktualizowane przez
-sieć bezprzewodową przy użyciu protokołu NTP, z wykorzystaniem serwera czasu
+zapisany w pamięci NVS~\cite{espidf}. Wskazania RTC mogą być dodatkowo aktualizowane przez
+sieć bezprzewodową przy użyciu protokołu NTP~\cite{rfc5905}, z wykorzystaniem serwera czasu
 Głównego Urzędu Miar (\texttt{tempus1.gum.gov.pl}). Nazwa pliku nagrania
 generowana jest automatycznie na podstawie wskazań zegara w formacie
 \texttt{RRRRMMDD\_GGMMSS} (np. \texttt{20260404\_091932.csv}), a w przypadku
@@ -395,8 +542,9 @@ w podrozdziale~\ref{sec:akwizycja}, w rzeczywistych warunkach ruchu
 drogowego. Surowe nagrania CSV nie nadają się bezpośrednio do treningu ---
 wymagają ujednolicenia siatki czasowej, odrzucenia fragmentów nieistotnych
 dla oceny stylu jazdy oraz przekształcenia w cechy opisujące zachowanie
-kierowcy w kolejnych przedziałach czasu. Proces ten opisano w kolejnych
-punktach.
+kierowcy w kolejnych przedziałach czasu. Przygotowanie danych zrealizowano
+w języku Python, z użyciem bibliotek pandas~\cite{pandas}
+i~NumPy~\cite{numpy}. Proces ten opisano w kolejnych punktach.
 
 \subsubsection{Czyszczenie danych i resampling}
 
@@ -591,8 +739,10 @@ algorytmu uczącego na jakość klasyfikacji.
 
 \subsubsection{Wybór klasy algorytmów}
 
-Jako kandydatów przetestowano \texttt{ExtraTreesClassifier} oraz
-\texttt{RandomForestClassifier}. Oba modele trenowano z tymi samymi
+Jako kandydatów przetestowano \texttt{ExtraTreesClassifier}, oparty na
+algorytmie drzew skrajnie losowych~\cite{geurts2006}, oraz
+\texttt{RandomForestClassifier}, implementujący algorytm lasu
+losowego~\cite{breiman2001}. Oba modele trenowano z tymi samymi
 hiperparametrami, zestawionymi w tabeli~\ref{tab:hiperparametry}. Liczbę
 drzew i głębokość ograniczono z wyjściowych wartości 80 i 8 do 60 i 7, co
 zmniejszyło rozmiar generowanego pliku nagłówkowego C o ok. 25\% przy
@@ -640,12 +790,12 @@ i zastosowano bez ponownego dopasowania do zbioru testowego.
 
 Wyniki klasyfikacji modelu RandomForest na zbiorze testowym zestawiono
 w tabeli~\ref{tab:wyniki-test}. Uzyskano dokładność zbalansowaną
-(\emph{balanced accuracy}) 96,0\% oraz makro-uśrednioną miarę F1 na
-poziomie 93,9\%. Klasa \emph{aggressive} --- mimo że stanowi najmniej liczną
+(\emph{balanced accuracy}) 96,1\% oraz makro-uśrednioną miarę F1 na
+poziomie 94,1\%. Klasa \emph{aggressive} --- mimo że stanowi najmniej liczną
 grupę w zbiorze --- rozpoznawana jest bardzo dobrze, z wysoką czułością
-(98,9\%) i wysoką precyzją (94,9\%), natomiast rozróżnienie klas \emph{eco}
+(98,9\%) i wysoką precyzją (95,0\%), natomiast rozróżnienie klas \emph{eco}
 oraz \emph{normal} pozostaje zadaniem trudniejszym, o czym świadczy niższa
-precyzja klasy \emph{eco} (83,2\%). Macierz pomyłek (tabela~\ref{tab:macierz-pomylek})
+precyzja klasy \emph{eco} (83,4\%). Macierz pomyłek (tabela~\ref{tab:macierz-pomylek})
 potwierdza ten wzorzec: dominującym źródłem pomyłek jest granica między
 klasami \emph{normal} i \emph{eco}; pojawiają się przy tym również nieliczne
 pomyłki między klasą \emph{normal} a \emph{aggressive}, co wynika z faktu, że
@@ -658,13 +808,13 @@ przy dowolnej prędkości, również typowej dla jazdy neutralnej.
     \label{tab:wyniki-test}
     \begin{tabular}{| l | c | c | c | r |} \hline
         \textbf{Klasa} & \textbf{Precyzja} & \textbf{Czułość} & \textbf{F1} & \textbf{Liczność} \\ \hline\hline
-        aggressive & 94,9\%  & 98,9\% & 96,9\% & 756  \\ \hline
-        eco        & 83,2\%  & 97,7\% & 89,9\% & 1799 \\ \hline
-        normal     & 98,9\%  & 91,2\% & 94,9\% & 4413 \\ \hline
+        aggressive & 95,0\%  & 98,9\% & 97,0\% & 756  \\ \hline
+        eco        & 83,4\%  & 98,1\% & 90,2\% & 1799 \\ \hline
+        normal     & 99,1\%  & 91,3\% & 95,0\% & 4413 \\ \hline
         \hline
-        \textbf{dokładność ogólna} & \multicolumn{3}{c|}{93,7\%} & 6968 \\ \hline
-        \textbf{balanced accuracy} & \multicolumn{3}{c|}{96,0\%} & --- \\ \hline
-        \textbf{makro F1} & \multicolumn{3}{c|}{93,9\%} & --- \\ \hline
+        \textbf{dokładność ogólna} & \multicolumn{3}{c|}{93,9\%} & 6968 \\ \hline
+        \textbf{balanced accuracy} & \multicolumn{3}{c|}{96,1\%} & --- \\ \hline
+        \textbf{makro F1} & \multicolumn{3}{c|}{94,1\%} & --- \\ \hline
     \end{tabular}
 \end{table}
 
@@ -675,8 +825,8 @@ przy dowolnej prędkości, również typowej dla jazdy neutralnej.
     \begin{tabular}{| l | c | c | c |} \hline
         \multirow{2}{*}{\textbf{Klasa rzeczywista}} & \multicolumn{3}{c|}{\textbf{Klasa przewidziana}} \\ \cline{2-4}
          & normal & eco & aggressive \\ \hline\hline
-        normal     & 4024 & 352  & 37   \\ \hline
-        eco        & 38   & 1758 & 3    \\ \hline
+        normal     & 4030 & 347  & 36   \\ \hline
+        eco        & 32   & 1764 & 3    \\ \hline
         aggressive & 5    & 3    & 748  \\ \hline
     \end{tabular}
 \end{table}

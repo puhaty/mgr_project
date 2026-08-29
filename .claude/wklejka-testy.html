@@ -1,0 +1,511 @@
+<title>Wklejka rozdziału Testy</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  :root {
+    --bg:#EFF2F2; --surface:#FFFFFF; --surface-2:#E4EAEA;
+    --ink:#151B1D; --ink-2:#3D4A4D; --muted:#66767A;
+    --line:#D3DBDB; --line-2:#BAC5C5;
+    --accent:#0B5D63; --accent-ink:#FFFFFF; --warm:#A2600C;
+    --shadow:0 1px 2px rgba(21,27,29,.06), 0 8px 24px -16px rgba(21,27,29,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#0F1416; --surface:#171F21; --surface-2:#202A2D;
+      --ink:#E7EDED; --ink-2:#C2CDCE; --muted:#8B9B9E;
+      --line:#2A3639; --line-2:#3A4A4E;
+      --accent:#4FB3B8; --accent-ink:#08191A; --warm:#D9A050;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0F1416; --surface:#171F21; --surface-2:#202A2D;
+    --ink:#E7EDED; --ink-2:#C2CDCE; --muted:#8B9B9E;
+    --line:#2A3639; --line-2:#3A4A4E;
+    --accent:#4FB3B8; --accent-ink:#08191A; --warm:#D9A050;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.85);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size:16px; line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:900px; margin:0 auto; padding:56px 24px 96px; display:flex; flex-direction:column; gap:26px; }
+
+  .masthead { display:flex; flex-direction:column; gap:10px; }
+  .eyebrow {
+    font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:11px;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--muted);
+  }
+  h1 {
+    font-family:"Source Serif 4", Georgia, serif; font-weight:600;
+    font-size:clamp(30px,5vw,42px); line-height:1.1; letter-spacing:-.015em;
+    margin:0; text-wrap:balance;
+  }
+  .lede { margin:0; max-width:66ch; color:var(--ink-2); font-size:15.5px; }
+  .rule { height:1px; background:var(--line); }
+
+  .alert {
+    background:var(--surface); border:1px solid var(--line);
+    border-left:3px solid var(--warm); border-radius:4px; padding:18px 22px;
+  }
+  .alert h2 {
+    font-family:"IBM Plex Sans",sans-serif; font-size:13px; font-weight:600;
+    letter-spacing:.04em; text-transform:uppercase; color:var(--warm); margin:0 0 8px;
+  }
+  .alert p { margin:0 0 8px; font-size:14.5px; color:var(--ink-2); max-width:70ch; }
+  .alert p:last-child { margin-bottom:0; }
+
+  .block { background:var(--surface); border:1px solid var(--line); border-radius:4px; box-shadow:var(--shadow); overflow:hidden; }
+  .block-head {
+    display:flex; align-items:center; gap:14px; padding:12px 16px;
+    background:var(--surface-2); border-bottom:1px solid var(--line);
+  }
+  .step {
+    font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:12px; font-weight:500;
+    color:var(--accent); background:var(--surface); border:1px solid var(--line-2);
+    border-radius:3px; padding:2px 7px; flex:none; font-variant-numeric:tabular-nums;
+  }
+  .block-title { font-size:14px; font-weight:600; flex:1 1 auto; min-width:0; }
+  .block-title small { display:block; font-weight:400; font-size:12.5px; color:var(--muted); }
+  .btns { display:flex; gap:8px; flex:none; }
+  .copy {
+    font-family:"IBM Plex Sans",sans-serif; font-size:13px; font-weight:500;
+    color:var(--accent-ink); background:var(--accent); border:1px solid transparent;
+    border-radius:3px; padding:7px 13px; cursor:pointer;
+    transition:opacity .15s ease, background .15s ease;
+  }
+  .copy.ghost { background:var(--surface); color:var(--accent); border-color:var(--line-2); }
+  .copy:hover { opacity:.88; }
+  .copy:focus-visible { outline:2px solid var(--warm); outline-offset:2px; }
+  .copy[data-state="done"] { background:var(--warm); color:#fff; border-color:transparent; }
+  .copy[data-state="fail"] { background:var(--surface); color:var(--ink); border-color:var(--line-2); }
+
+  .block-body { padding:22px 24px 26px; }
+
+  .para {
+    font-family:"Source Serif 4", Georgia, serif; font-size:16.5px; line-height:1.65;
+    color:var(--ink); margin:0 0 1em; max-width:70ch; text-align:justify; hyphens:auto;
+  }
+  .para:last-child { margin-bottom:0; }
+  .para-h { font-family:"Source Serif 4", Georgia, serif; font-size:19px; font-weight:600; margin:0; color:var(--ink); }
+  .hd {
+    font-family:"Source Serif 4", Georgia, serif; font-size:17px; font-weight:600;
+    color:var(--ink); margin:0 0 14px; padding-bottom:10px; border-bottom:1px dashed var(--line);
+  }
+  .note {
+    font-size:13px; color:var(--muted); margin:14px 0 0;
+    padding-top:12px; border-top:1px dashed var(--line); max-width:70ch;
+  }
+
+  .table-scroll { overflow-x:auto; }
+  table.dane {
+    border-collapse:collapse; width:100%; min-width:600px;
+    font-family:"Source Serif 4", Georgia, serif; font-size:14.5px; line-height:1.5;
+    font-variant-numeric:tabular-nums;
+  }
+  table.dane th, table.dane td {
+    border:1px solid var(--line-2); padding:8px 11px; text-align:left; vertical-align:top;
+  }
+  table.dane thead th { background:var(--surface-2); font-weight:600; font-size:14px; }
+  .caption { font-family:"IBM Plex Sans",sans-serif; font-size:13px; color:var(--muted); margin:0 0 12px; }
+  .caption strong { color:var(--ink-2); font-weight:600; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+  @media (max-width:620px) {
+    .wrap { padding:36px 16px 72px; }
+    .block-body { padding:18px 16px 20px; }
+    .block-head { flex-wrap:wrap; }
+    .btns { width:100%; }
+    .copy { flex:1; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Praca magisterska · rozdział 5</div>
+    <h1>Testy i walidacja</h1>
+    <p class="lede">Cały rozdział w kolejności wklejania. Wszystkie liczby pochodzą z Twoich nagrań i pliku z predykcjami — nic nie jest szacowane.</p>
+  </header>
+
+  <div class="alert">
+    <h2>Dwie rzeczy do załatwienia poza wklejaniem</h2>
+    <p><strong>Nowa pozycja bibliografii.</strong> W podrozdziale 5.5, w miejscu oznaczonym <strong>[CO2]</strong>, wstaw cytowanie przez Odwołania → Wstaw cytat → Dodaj nowe źródło. Typ źródła: <em>Raport</em>. Autor (zaznacz „Autor korporacyjny”): <em>Krajowy Ośrodek Bilansowania i Zarządzania Emisjami</em>. Tytuł: <em>Wartości opałowe (WO) i wskaźniki emisji CO₂ (WE) do raportowania w ramach Systemu Handlu Uprawnieniami do Emisji</em>. Wydawca: <em>Instytut Ochrony Środowiska – Państwowy Instytut Badawczy</em>, Warszawa. Rok — ten z edycji, którą faktycznie otworzysz.</p>
+    <p>KOBiZE podaje wskaźnik w kg CO₂ na gigadżul, nie na litr, dlatego zdanie w bloku 8 jawnie pokazuje przeliczenie — dzięki temu przypis odsyła do liczby, która w źródle rzeczywiście występuje.</p>
+    <p><strong>Niespójność w rozdziale 4.</strong> Tekst pod Tabelą 15 podaje balanced accuracy 96,0%, a sama Tabela 15 — 96,1%. Trzeba to ujednolicić; w rozdziale 5 użyłem 96,1% za tabelą.</p>
+  </div>
+
+  <div class="rule"></div>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">1</span>
+      <span class="block-title">Nagłówek rozdziału i akapit wprowadzający
+        <small>Nagłówek 1, na końcu pracy przed Bibliografią</small>
+      </span>
+      <div class="btns">
+        <button class="copy ghost" data-target="h1x">Nagłówek</button>
+        <button class="copy" data-target="b1">Treść</button>
+      </div>
+    </div>
+    <div class="block-body">
+      <p class="hd" id="h1x">Testy i walidacja</p>
+      <div id="b1">
+        <p class="para">Opracowany system poddano weryfikacji na czterech poziomach, z których każdy odpowiada innemu ryzyku projektowemu. Pierwszym jest poprawność pozyskiwania danych z magistrali pojazdu — błędne zdekodowanie sygnału unieważniłoby wszystkie dalsze wyniki. Drugim jest zgodność modelu osadzonego w mikrokontrolerze z modelem referencyjnym wytrenowanym na komputerze, ponieważ przeniesienie modelu do kodu w języku C oraz kwantyzacja cech do liczb całkowitych mogą zmienić podejmowane przez niego decyzje. Trzecim jest poprawność działania systemu jako całości, obejmująca współpracę modułów akwizycji, rejestracji, predykcji oraz interfejsu. Czwartym, najtrudniejszym do zmierzenia, jest rzeczywisty wpływ urządzenia na sposób prowadzenia pojazdu. Wyniki uzyskane na każdym z tych poziomów przedstawiono w kolejnych podrozdziałach.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">2</span>
+      <span class="block-title">5.1 Metodyka testów</span>
+      <div class="btns">
+        <button class="copy ghost" data-target="h2x">Nagłówek</button>
+        <button class="copy" data-target="b2">Treść</button>
+      </div>
+    </div>
+    <div class="block-body">
+      <p class="hd" id="h2x">Metodyka testów</p>
+      <div id="b2">
+        <p class="para">Testy prowadzono na pojeździe testowym z silnikiem benzynowym o pojemności 1,4 dm³, w rzeczywistym ruchu drogowym, bez wydzielonego toru testowego ani scenariuszy jazdy narzuconych kierowcy. Materiał pomiarowy stanowi 45 przejazdów zarejestrowanych przez urządzenie, obejmujących łącznie 1381 km oraz 16,1 godziny jazdy w warunkach miejskich, pozamiejskich oraz na drogach szybkiego ruchu.</p>
+        <p class="para">Urządzenie pracowało przy tym w konfiguracji docelowej, opisanej w podrozdziale 4.9: równolegle rejestrowało dane na karcie pamięci i wykonywało predykcję modelu, zasilane pojedynczym strumieniem próbek. Dzięki temu ten sam materiał posłużył jednocześnie do weryfikacji akwizycji, do porównania decyzji modelu osadzonego z modelem referencyjnym oraz do oceny zużycia paliwa, bez potrzeby prowadzenia osobnych serii pomiarowych dla każdego z tych celów.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">3</span>
+      <span class="block-title">5.2 Weryfikacja akwizycji i parsowania danych z magistrali CAN</span>
+      <div class="btns">
+        <button class="copy ghost" data-target="h3x">Nagłówek</button>
+        <button class="copy" data-target="b3">Treść</button>
+      </div>
+    </div>
+    <div class="block-body">
+      <p class="hd" id="h3x">Weryfikacja akwizycji i parsowania danych z magistrali CAN</p>
+      <div id="b3">
+        <p class="para">Poprawność dekodowania sygnałów sprawdzono przez porównanie z niezależnym urządzeniem referencyjnym — homologowanym nadajnikiem telemetrycznym Pulson LE-840, przedstawionym na Rysunek 26. Oba urządzenia wpięto równolegle do tej samej magistrali pojazdu, tak aby odbierały dokładnie ten sam strumień ramek w tym samym czasie.</p>
+        <p class="para">Porównaniem objęto pełny zestaw sygnałów zestawionych w Tabela 8, a więc wszystkie wielkości, które opracowany rejestrator dekoduje i zapisuje. Wskazania obu urządzeń okazały się zgodne — nie stwierdzono rozbieżności w żadnym z porównywanych parametrów.</p>
+        <p class="para">Wynik ten jest zgodny z oczekiwaniem i właśnie dlatego stanowi miarodajny test. Oba urządzenia czerpią dane z tego samego źródła, a magistrala przekazuje wartości w postaci cyfrowej, więc jakakolwiek różnica mogłaby wynikać wyłącznie z błędnej interpretacji ramek. Test nie mierzy zatem dokładności pomiaru, lecz poprawność opracowanego parsera. Zgodność z urządzeniem homologowanym potwierdza, że przyjęte identyfikatory ramek, układ pól danych oraz przeliczniki wartości surowych na wielkości fizyczne zostały odtworzone prawidłowo — a więc że dane stanowiące podstawę całej dalszej analizy są wiarygodne.</p>
+      </div>
+      <p class="note"><strong>Podpis rysunku:</strong> Nadajnik telemetryczny Pulson LE-840, wykorzystany jako urządzenie referencyjne przy weryfikacji dekodowania sygnałów. — zdjęcie wklejasz sam, podpis wstaw przez Odwołania → Wstaw podpis.</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">4</span>
+      <span class="block-title">5.3 Weryfikacja modelu osadzonego w warunkach rzeczywistych</span>
+      <div class="btns">
+        <button class="copy ghost" data-target="h4x">Nagłówek</button>
+        <button class="copy" data-target="b4">Treść</button>
+      </div>
+    </div>
+    <div class="block-body">
+      <p class="hd" id="h4x">Weryfikacja modelu osadzonego w warunkach rzeczywistych</p>
+      <div id="b4">
+        <p class="para">Przeniesienie modelu na mikrokontroler wiąże się z dwiema zmianami, które mogą wpłynąć na jego decyzje: model zapisywany jest jako statyczny kod w języku C, a cechy podawane na jego wejście podlegają kwantyzacji do liczb całkowitych. Aby sprawdzić, czy zmiany te nie pogorszyły jakości klasyfikacji, urządzenie podczas jazdy zapisywało — obok wartości cech wyznaczonych dla kolejnych okien czasowych — również klasę, którą samo przypisało danemu oknu. Te same okna, z tymi samymi wartościami cech, przepuszczono następnie przez model referencyjny działający na komputerze, a obie decyzje porównano parami.</p>
+        <p class="para">Zestawienie objęło 5238 okien czasowych pochodzących z jedenastu przejazdów. Urządzenie i model referencyjny podjęły identyczną decyzję w 4997 przypadkach, co odpowiada zgodności 95,4%. Zgodność w rozbiciu na klasy przedstawia Tabela 23, a pełne zestawienie decyzji obu modeli — Tabela 24.</p>
+        <p class="para">Zgodność utrzymuje się na zbliżonym poziomie we wszystkich trzech klasach, od 95,3% dla jazdy neutralnej do 96,2% dla jazdy ekonomicznej, a w rozbiciu na poszczególne przejazdy mieści się w przedziale od 92,7% do 98,1%. Wynik nie jest zatem efektem uśrednienia pojedynczego, wyjątkowo udanego przejazdu.</p>
+        <p class="para">Istotny jest rozkład rozbieżności. Zdecydowana ich większość dotyczy granicy między jazdą neutralną a pozostałymi klasami: 102 okna zaklasyfikowane przez model referencyjny jako neutralne urządzenie uznało za ekonomiczne, a 101 za agresywne. Przejść bezpośrednio między klasą ekonomiczną a agresywną, a więc rozbieżności o dwie klasy, odnotowano jedynie 21. Jest to ten sam wzorzec, który wykazała macierz pomyłek modelu referencyjnego w podrozdziale 4.8 — rozbieżności pojawiają się tam, gdzie granica między klasami jest z natury najmniej ostra, a nie w sposób przypadkowy. Wskazuje to, że ich źródłem są zaokrąglenia wprowadzane przez arytmetykę całkowitoliczbową, a nie błąd implementacji modelu na urządzeniu.</p>
+        <p class="para">Urządzenie przypisuje przy tym nieco częściej klasy skrajne niż model odniesienia: jazdę ekonomiczną w 7,0% okien wobec 5,0%, a agresywną w 13,5% wobec 11,9%. W praktyce oznacza to, że kierowca częściej otrzymuje wyraźną informację zwrotną, zamiast oceny pozostającej w stanie neutralnym.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">5</span>
+      <span class="block-title">Tabela 23 — zgodność w rozbiciu na klasy</span>
+      <div class="btns"><button class="copy" data-target="t23" data-mode="table">Kopiuj tabelę</button></div>
+    </div>
+    <div class="block-body">
+      <p class="caption"><strong>Podpis:</strong> Zgodność decyzji modelu osadzonego w urządzeniu z modelem referencyjnym, w rozbiciu na klasy.</p>
+      <div class="table-scroll">
+        <table class="dane" id="t23">
+          <thead><tr><th>Klasa</th><th>Liczba okien</th><th>Decyzje zgodne</th><th>Zgodność</th></tr></thead>
+          <tbody>
+            <tr><td>normal</td><td>4352</td><td>4149</td><td>95,3%</td></tr>
+            <tr><td>eco</td><td>261</td><td>251</td><td>96,2%</td></tr>
+            <tr><td>aggressive</td><td>625</td><td>597</td><td>95,5%</td></tr>
+            <tr><td>razem</td><td>5238</td><td>4997</td><td>95,4%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">6</span>
+      <span class="block-title">Tabela 24 — zestawienie decyzji obu modeli</span>
+      <div class="btns"><button class="copy" data-target="t24" data-mode="table">Kopiuj tabelę</button></div>
+    </div>
+    <div class="block-body">
+      <p class="caption"><strong>Podpis:</strong> Zestawienie decyzji modelu referencyjnego oraz modelu osadzonego w urządzeniu (liczba okien).</p>
+      <div class="table-scroll">
+        <table class="dane" id="t24">
+          <thead><tr><th>Model referencyjny</th><th>Urządzenie: normal</th><th>Urządzenie: eco</th><th>Urządzenie: aggressive</th></tr></thead>
+          <tbody>
+            <tr><td>normal</td><td>4149</td><td>102</td><td>101</td></tr>
+            <tr><td>eco</td><td>3</td><td>251</td><td>7</td></tr>
+            <tr><td>aggressive</td><td>14</td><td>14</td><td>597</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">7</span>
+      <span class="block-title">5.4 Testy systemu jako całości</span>
+      <div class="btns">
+        <button class="copy ghost" data-target="h7x">Nagłówek</button>
+        <button class="copy" data-target="b7">Treść</button>
+      </div>
+    </div>
+    <div class="block-body">
+      <p class="hd" id="h7x">Testy systemu jako całości</p>
+      <div id="b7">
+        <p class="para">Kolejny poziom weryfikacji obejmował działanie systemu jako całości, w scenariuszach odpowiadających typowemu cyklowi użytkowania pojazdu. Sprawdzono automatyczne rozpoczynanie i kończenie rejestracji wraz ze zmianą stanu zapłonu, przechodzenie urządzenia w stan uśpienia po ustaniu ruchu na magistrali oraz jego wybudzanie po ponownym pojawieniu się ramek, a także zachowanie liczników statystyk po odłączeniu zasilania — wartości odtwarzane są z pamięci nieulotnej i narastają dalej, bez utraty dotychczasowego dorobku kierowcy.</p>
+        <p class="para">Zweryfikowano również równoczesną pracę wszystkich modułów zasilanych wspólnym strumieniem próbek: rejestracji na karcie pamięci, predykcji modelu oraz naliczania statystyk oszczędności. W żadnym z przejazdów nie zaobserwowano rozjazdu między zapisem na karcie a oceną prezentowaną na ekranie ani zauważalnych spadków płynności interfejsu. Sprawdzono także pracę urządzenia bez dostępu do sieci bezprzewodowej: przy niedostępnym serwerze czasu system korzysta ze wskazań układu zegara czasu rzeczywistego, a w razie ich braku — z czasu pracy od uruchomienia, co pozwala kontynuować rejestrację niezależnie od dostępności łączności.</p>
+        <p class="para">Wszystkie przeprowadzone scenariusze zakończyły się wynikiem pozytywnym; nie stwierdzono błędów wymagających zmian w oprogramowaniu.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">8</span>
+      <span class="block-title">5.5 Wpływ systemu na zużycie paliwa i emisję dwutlenku węgla</span>
+      <div class="btns">
+        <button class="copy ghost" data-target="h8x">Nagłówek</button>
+        <button class="copy" data-target="b8">Treść</button>
+      </div>
+    </div>
+    <div class="block-body">
+      <p class="hd" id="h8x">Wpływ systemu na zużycie paliwa i emisję dwutlenku węgla</p>
+      <div id="b8">
+        <p class="para">Ocenę wpływu urządzenia na sposób prowadzenia pojazdu oparto na liczniku zużycia paliwa odbieranym z magistrali, a więc na wielkości pochodzącej z samego pojazdu, a nie z szacunku. Spośród 45 przejazdów do analizy zakwalifikowano 40, w których wskazania drogomierza oraz licznika paliwa były kompletne przez cały czas trwania nagrania.</p>
+        <p class="para">Materiał podzielono na dwa porównywalne okresy eksploatacji, obejmujące tę samą liczbę przejazdów i zbliżony dystans. W pierwszym urządzenie rejestrowało dane, nie prezentując kierowcy informacji zwrotnej; w drugim pracowało w pełnej konfiguracji, z działającą wizualizacją oceny stylu jazdy. Wyniki zestawia Tabela 25.</p>
+        <p class="para">Średnie zużycie paliwa w drugim okresie było niższe o 1,69 litra na 100 km, co odpowiada spadkowi o 19,7%. Ograniczając zestawienie wyłącznie do przejazdów dłuższych niż 20 km, a więc pomijając krótkie przejazdy miejskie na nierozgrzanym silniku, różnica utrzymuje się na porównywalnym poziomie: 8,41 wobec 6,79 litra na 100 km, czyli 19,3%. Efekt nie wynika zatem z odmiennego udziału krótkich przejazdów w obu okresach.</p>
+        <p class="para">Do przeliczenia zużytego paliwa na emisję dwutlenku węgla przyjęto wskaźnik 2,31 kg CO₂ na litr benzyny, odpowiadający publikowanemu wskaźnikowi emisji 69,30 kg CO₂ na gigadżul energii zawartej w paliwie, po uwzględnieniu jego wartości opałowej oraz gęstości [CO2]. Przejechanie dystansu drugiego okresu przy zużyciu charakterystycznym dla pierwszego wymagałoby 55,1 litra paliwa zamiast zarejestrowanych 44,3 litra. Odpowiada to oszczędności 10,9 litra paliwa oraz ograniczeniu emisji o 25,1 kg CO₂ na dystansie 642 km, a więc około 3,9 kg CO₂ na każde przejechane 100 km. W skali rocznego przebiegu rzędu 20 tys. km oznaczałoby to ograniczenie emisji o blisko 780 kg.</p>
+        <p class="para">Wynik ten należy jednak interpretować ostrożnie. Porównanie nie jest eksperymentem kontrolowanym: oba okresy różnią się nie tylko obecnością informacji zwrotnej, lecz również doborem tras, natężeniem ruchu oraz temperaturą otoczenia, która wpływa na zużycie paliwa w fazie rozgrzewania silnika. Skala zaobserwowanej różnicy jest zgodna z rzędem wielkości podawanym w literaturze dla efektów zmiany stylu jazdy [2], a kierunek zmiany odpowiada założeniu przyjętemu w pracy, jednak jednoznaczne rozstrzygnięcie wymagałoby badania na większej liczbie kierowców, z naprzemiennym włączaniem i wyłączaniem informacji zwrotnej na tych samych trasach.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">9</span>
+      <span class="block-title">Tabela 25 — zużycie paliwa i emisja</span>
+      <div class="btns"><button class="copy" data-target="t25" data-mode="table">Kopiuj tabelę</button></div>
+    </div>
+    <div class="block-body">
+      <p class="caption"><strong>Podpis:</strong> Zużycie paliwa oraz emisja dwutlenku węgla w porównywanych okresach eksploatacji.</p>
+      <div class="table-scroll">
+        <table class="dane" id="t25">
+          <thead><tr><th>Okres eksploatacji</th><th>Przejazdy</th><th>Dystans</th><th>Paliwo</th><th>Zużycie</th><th>Emisja CO₂</th></tr></thead>
+          <tbody>
+            <tr><td>Bez informacji zwrotnej</td><td>20</td><td>739 km</td><td>63,50 l</td><td>8,59 l/100 km</td><td>146,7 kg</td></tr>
+            <tr><td>Z działającą wizualizacją</td><td>20</td><td>642 km</td><td>44,27 l</td><td>6,90 l/100 km</td><td>102,3 kg</td></tr>
+            <tr><td>Różnica</td><td>—</td><td>—</td><td>—</td><td>−1,69 l/100 km (−19,7%)</td><td>−3,9 kg/100 km</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">10</span>
+      <span class="block-title">5.6 Badanie ankietowe wśród kierowców</span>
+      <div class="btns">
+        <button class="copy ghost" data-target="h10x">Nagłówek</button>
+        <button class="copy" data-target="b10">Treść</button>
+      </div>
+    </div>
+    <div class="block-body">
+      <p class="hd" id="h10x">Badanie ankietowe wśród kierowców</p>
+      <div id="b10">
+        <p class="para">Ocenę samego interfejsu — jego zrozumiałości, wpływu na uwagę kierowcy oraz oddziaływania motywacyjnego — uzupełniono badaniem ankietowym. Urządzenie w działaniu zaprezentowano dziesięciu kierowcom o zróżnicowanym stażu, od 2 do 25 lat, oraz rocznym przebiegu od 7 do 35 tysięcy kilometrów, a następnie poproszono ich o odpowiedź na pięć pytań. Cztery z nich oceniano w skali od 1 do 5, piąte stanowiło wybór między dwiema formami prezentacji wyniku. Wyniki zestawia Tabela 26.</p>
+        <p class="para">Najwyżej oceniono zrozumiałość przekazu — średnia 4,2 przy pytaniu o to, czy sposób prezentacji oceny jest czytelny bez dodatkowego wyjaśnienia. Ocena wpływu na rozproszenie uwagi wyniosła 1,8, przy czym w tym pytaniu niższa wartość jest korzystniejsza: respondenci nie uznali interfejsu za odciągający wzrok od drogi, co odpowiada wymaganiu, aby ekran przyciągał uwagę wyłącznie wtedy, gdy jest to konieczne.</p>
+        <p class="para">Najistotniejszy dla przyjętych w pracy założeń jest wynik pytania o preferowaną formę informacji zwrotnej: dziewięciu na dziesięciu respondentów wskazało zgamifikowaną wizualizację zamiast liczbowego wskaźnika punktowego. Potwierdza to bezpośrednio założenie sformułowane w Celu Pracy, zgodnie z którym mechanizmy o charakterze motywacyjnym oddziałują na kierowcę skuteczniej niż surowy wynik liczbowy. Jedyne wskazanie na rzecz wskaźnika liczbowego pochodziło od kierowcy jeżdżącego głównie służbowo, uzasadniającego wybór potrzebą raportowania wyników.</p>
+        <p class="para">Badanie przeprowadzono na próbie dziesięciu osób i ma charakter wyłącznie pilotażowy. Uzyskane wyniki wskazują kierunek, lecz nie pozwalają na wnioskowanie statystyczne ani na uogólnienie na populację kierowców. Potwierdzenie obserwowanych tendencji wymagałoby badania na znacznie większej i dobranej losowo grupie, co wskazano jako jeden z kierunków dalszych prac.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">11</span>
+      <span class="block-title">Tabela 26 — wyniki ankiety</span>
+      <div class="btns"><button class="copy" data-target="t26" data-mode="table">Kopiuj tabelę</button></div>
+    </div>
+    <div class="block-body">
+      <p class="caption"><strong>Podpis:</strong> Wyniki pilotażowego badania ankietowego przeprowadzonego wśród dziesięciu kierowców.</p>
+      <div class="table-scroll">
+        <table class="dane" id="t26">
+          <thead><tr><th>Pytanie</th><th>Skala</th><th>Wynik</th></tr></thead>
+          <tbody>
+            <tr><td>Zrozumiałość prezentacji bez dodatkowego wyjaśnienia</td><td>1–5</td><td>4,2</td></tr>
+            <tr><td>Rozpraszanie uwagi podczas jazdy (mniej znaczy lepiej)</td><td>1–5</td><td>1,8</td></tr>
+            <tr><td>Zachęta do spokojniejszej jazdy</td><td>1–5</td><td>4,0</td></tr>
+            <tr><td>Chęć korzystania we własnym pojeździe</td><td>1–5</td><td>4,1</td></tr>
+            <tr><td>Preferowana forma informacji zwrotnej</td><td>wybór</td><td>wizualizacja 9 / wskaźnik liczbowy 1</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <span class="step">12</span>
+      <span class="block-title">5.7 Ocena realizacji celu pracy</span>
+      <div class="btns">
+        <button class="copy ghost" data-target="h12x">Nagłówek</button>
+        <button class="copy" data-target="b12">Treść</button>
+      </div>
+    </div>
+    <div class="block-body">
+      <p class="hd" id="h12x">Ocena realizacji celu pracy</p>
+      <div id="b12">
+        <p class="para">Cel pracy zakładał wykazanie, że połączenie telemetrii pojazdu z metodami uczenia maszynowego oraz odpowiednio zaprojektowanym interfejsem informacyjnym pozwala skutecznie wpływać na styl jazdy kierowcy. Przeprowadzone testy pozwalają ocenić stopień realizacji tego celu na trzech płaszczyznach.</p>
+        <p class="para">Płaszczyzna techniczna została potwierdzona w pełni. Dane pozyskiwane z magistrali są zgodne ze wskazaniami urządzenia homologowanego, model klasyfikuje styl jazdy ze zbalansowaną dokładnością 96,1% na zbiorze testowym (podrozdział 4.8), a jego wersja osadzona w mikrokontrolerze odtwarza decyzje modelu referencyjnego w 95,4% przypadków, przy czym rozbieżności koncentrują się na naturalnie nieostrych granicach między klasami. System działa w całości lokalnie, bez zależności od łączności sieciowej, i pracuje stabilnie w rzeczywistym ruchu drogowym.</p>
+        <p class="para">Płaszczyzna projektowa, dotycząca formy informacji zwrotnej, została potwierdzona wynikami badania ankietowego. Zdecydowana większość respondentów uznała zgamifikowaną wizualizację za czytelniejszą i bardziej motywującą niż wskaźnik liczbowy, nie uznając jej jednocześnie za rozpraszającą — a więc dokładnie tak, jak zakładano, projektując interfejs zgodnie z zasadami nudgingu i gamifikacji.</p>
+        <p class="para">Płaszczyzna behawioralna, a więc rzeczywista zmiana nawyków kierowcy, została potwierdzona jedynie częściowo. Zarejestrowany spadek zużycia paliwa o 19,7% między okresem bez informacji zwrotnej a okresem z działającą wizualizacją jest zgodny z założeniem pracy oraz z rzędem wielkości podawanym w literaturze, jednak — jak wskazano w podrozdziale 5.5 — nie pochodzi z eksperymentu kontrolowanego. Rozstrzygające potwierdzenie tezy w tym zakresie wymaga badania długoterminowego, prowadzonego na wielu kierowcach, z naprzemiennym włączaniem informacji zwrotnej na tych samych trasach. Opracowany system dostarcza narzędzia niezbędnego do przeprowadzenia takiego badania, ponieważ rejestruje jednocześnie dane telemetryczne pojazdu oraz własne oceny stylu jazdy, umożliwiając późniejsze zestawienie jednych z drugimi.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="alert">
+    <h2>Po wklejeniu</h2>
+    <p>Odwołania „Tabela 8”, „Tabela 23–26”, „Rysunek 26” oraz „podrozdział 4.8” i „4.9” wstaw jako odsyłacze, nie jako sztywny tekst. Wszystkie zdania są zbudowane pod mianownik, więc forma z pola będzie pasować.</p>
+    <p>Na koniec <strong>Ctrl+A, F9</strong> i osobno aktualizacja spisu treści, spisu rysunków oraz spisu tabel.</p>
+  </div>
+
+</div>
+
+<script>
+  function proseText(el) {
+    if (el.classList && el.classList.contains("hd")) {
+      return el.textContent.replace(/\s+/g, " ").trim();
+    }
+    var nodes = el.querySelectorAll(".para");
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      out.push(nodes[i].textContent.replace(/\s+/g, " ").trim());
+    }
+    return out.join("\n\n");
+  }
+
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  function tableHtml(tbl) {
+    var cell = "border:1px solid #000000;padding:4pt 6pt;vertical-align:top;";
+    var html = '<table style="border-collapse:collapse;">';
+    var heads = tbl.querySelectorAll("thead th");
+    if (heads.length) {
+      html += "<thead><tr>";
+      for (var i = 0; i < heads.length; i++) {
+        html += '<th style="' + cell + 'font-weight:bold;text-align:left;">' + esc(heads[i].textContent.trim()) + "</th>";
+      }
+      html += "</tr></thead>";
+    }
+    html += "<tbody>";
+    var rows = tbl.querySelectorAll("tbody tr");
+    for (var r = 0; r < rows.length; r++) {
+      html += "<tr>";
+      var cells = rows[r].querySelectorAll("td");
+      for (var c = 0; c < cells.length; c++) {
+        html += '<td style="' + cell + '">' + esc(cells[c].textContent.trim()) + "</td>";
+      }
+      html += "</tr>";
+    }
+    return html + "</tbody></table>";
+  }
+
+  function tableText(tbl) {
+    var lines = [];
+    var rows = tbl.querySelectorAll("tr");
+    for (var r = 0; r < rows.length; r++) {
+      var cells = rows[r].querySelectorAll("th, td");
+      var parts = [];
+      for (var c = 0; c < cells.length; c++) {
+        parts.push(cells[c].textContent.replace(/\s+/g, " ").trim());
+      }
+      lines.push(parts.join("\t"));
+    }
+    return lines.join("\n");
+  }
+
+  function flash(btn, label, state) {
+    var original = btn.dataset.label || btn.textContent;
+    btn.dataset.label = original;
+    btn.textContent = label;
+    btn.setAttribute("data-state", state);
+    window.setTimeout(function () {
+      btn.textContent = original;
+      btn.removeAttribute("data-state");
+    }, 1600);
+  }
+
+  function legacyCopy(html, text) {
+    var holder = document.createElement("div");
+    holder.setAttribute("contenteditable", "true");
+    holder.style.position = "fixed";
+    holder.style.left = "-9999px";
+    holder.innerHTML = html || esc(text).replace(/\n/g, "<br>");
+    document.body.appendChild(holder);
+    var range = document.createRange();
+    range.selectNodeContents(holder);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    sel.removeAllRanges();
+    document.body.removeChild(holder);
+    return ok;
+  }
+
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest(".copy");
+    if (!btn) return;
+    var el = document.getElementById(btn.dataset.target);
+    if (!el) return;
+
+    var html = null, text;
+    if (btn.dataset.mode === "table") {
+      html = tableHtml(el);
+      text = tableText(el);
+    } else {
+      text = proseText(el);
+    }
+
+    var done = function () { flash(btn, "Skopiowano", "done"); };
+    var failed = function () {
+      if (legacyCopy(html, text)) { done(); }
+      else { flash(btn, "Zaznacz ręcznie", "fail"); }
+    };
+
+    if (navigator.clipboard && window.ClipboardItem && html) {
+      navigator.clipboard.write([new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" })
+      })]).then(done).catch(failed);
+    } else if (navigator.clipboard && navigator.clipboard.writeText && !html) {
+      navigator.clipboard.writeText(text).then(done).catch(failed);
+    } else {
+      failed();
+    }
+  });
+</script>

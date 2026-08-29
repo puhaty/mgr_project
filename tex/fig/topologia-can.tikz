@@ -1,0 +1,38 @@
+% Topologia magistrali CAN: wspólna dwuprzewodowa magistrala (CAN_H/CAN_L)
+% z rezystorami terminującymi 120 om na obu końcach i węzłami (ECU)
+% dołączonymi równolegle.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    >=Stealth
+]
+    \definecolor{cVehicle}{HTML}{64748B} % węzły ECU — łupkowy szary (jak POJAZD na innych schematach)
+    \definecolor{cBus}{HTML}{2563EB}     % linie magistrali — niebieski
+
+    \tikzset{
+        ecu/.style={draw=cVehicle, line width=0.9pt, rounded corners=3pt,
+                    align=center, fill=cVehicle!8, text width=2.0cm,
+                    minimum height=9mm, inner sep=3pt,
+                    preaction={fill=black!40, opacity=0.25,
+                    transform canvas={xshift=0.4mm, yshift=-0.4mm}}},
+        term/.style={draw=cBus, line width=0.9pt, fill=white,
+                     minimum width=5mm, minimum height=9mm, inner sep=1pt,
+                     font=\scriptsize, align=center}
+    }
+
+    % ---- Dwie linie magistrali (skrętka CAN_H / CAN_L) ----
+    \draw[cBus, line width=1.2pt] (0.5,0)    -- (12.5,0);
+    \draw[cBus, line width=1.2pt] (0.5,-0.5) -- (12.5,-0.5);
+    \node[cBus, anchor=west] at (12.6,0)    {CAN\_H};
+    \node[cBus, anchor=west] at (12.6,-0.5) {CAN\_L};
+
+    % ---- Rezystory terminujące na obu końcach ----
+    \node[term] (t1) at (0.5,-0.25) {120\\$\Omega$};
+    \node[term] (t2) at (12.5,-0.25) {120\\$\Omega$};
+
+    % ---- Węzły ECU dołączone do magistrali ----
+    \foreach \x/\nazwa in {2.3/{węzeł 1\\(np. silnik)}, 5.2/{węzeł 2\\(np. hamulce)}, 8.1/{węzeł 3\\(np. deska rozdzielcza)}, 11.0/{węzeł $n$}} {
+        \node[ecu] (e) at (\x,1.6) {\nazwa};
+        \draw[cVehicle, line width=0.9pt] (\x-0.25,1.15) -- (\x-0.25,0);
+        \draw[cVehicle, line width=0.9pt] (\x+0.25,1.15) -- (\x+0.25,-0.5);
+    }
+\end{tikzpicture}
